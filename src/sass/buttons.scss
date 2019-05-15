@@ -1,0 +1,117 @@
+// Buttons
+.btn {
+  background: $dark;
+  border: 1px solid darken($dark, 5%);
+  border-radius: $r;
+  color: $white;
+  cursor: pointer;
+  display: inline-block;
+  font-family: inherit;
+  font-size: $s;
+  font-weight: $wl;
+  height: $btn-size;
+  padding: 0 ($s * .75);
+  transition: background-color $t ease, border-color $t ease;
+
+  &:hover,
+  &:focus {
+    background-color: darken($dark, 5%);
+  }
+
+  // Pill buttons
+  &.pill {
+    border-radius: $btn-size / 2;
+    padding: 0 $s;
+  }
+
+  // Small buttons
+  &.sm {
+    font-size: $s * .75;
+    height: $btn-size * .75;
+
+    &.pill {
+      border-radius: ($btn-size * .75) / 2;
+      padding: 0 ($s * .75);
+    }
+  }
+
+  // Button styles
+  &.light {
+    background-color: darken($light, 5%);
+    border-color: darken($light, 10%);
+    color: $medium;
+
+    &:hover,
+    &:focus {
+      background-color: darken($light, 8%);
+    }
+  }
+
+  &.medium {
+    background-color: $medium;
+    border-color: darken($medium, 5%);
+
+    &:hover,
+    &:focus {
+      background-color: darken($medium, 5%);
+    }
+  }
+
+  &.primary {
+    background-color: $primary;
+    border-color: darken($primary, 5%);
+
+    &:hover,
+    &:focus {
+      background-color: darken($primary, 5%);
+    }
+  }
+
+  &.secondary {
+    background-color: $secondary;
+    border-color: darken($secondary, 5%);
+    color: $dark;
+
+    &:hover,
+    &:focus {
+      background-color: darken($secondary, 5%);
+    }
+  }
+
+  &.info {
+    background-color: $info;
+    border-color: darken($info, 5%);
+
+    &:hover,
+    &:focus {
+      background-color: darken($info, 5%);
+    }
+  }
+
+  &.danger {
+    background-color: $danger;
+    border-color: darken($danger, 5%);
+
+    &:hover,
+    &:focus {
+      background-color: darken($danger, 5%);
+    }
+  }
+
+  &.success {
+    background-color: $success;
+    border-color: darken($success, 5%);
+
+    &:hover,
+    &:focus {
+      background-color: darken($success, 5%);
+    }
+  }
+
+  // Focus outline
+  &:focus {
+    border-color: $info;
+    box-shadow: 0 0 6px transparentize($info, .2);
+    outline: none;
+  }
+}

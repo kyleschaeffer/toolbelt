@@ -1,0 +1,32 @@
+// App layout
+.app {
+  display: grid;
+  grid-template-rows: auto $footer-size;
+  height: 100vh;
+}
+
+// Toolbelt
+.toolbelt {
+  display: grid;
+  grid-template-rows: auto 50px auto;
+}
+
+// Input/output
+.in,
+.out {
+  display: grid;
+  grid-template-rows: 100%;
+  padding: $s;
+
+  @include mq-up($screen-md) {
+    padding: $s * 2;
+  }
+}
+
+.in {
+  padding-bottom: 0;
+}
+
+.out {
+  padding-top: 0;
+}

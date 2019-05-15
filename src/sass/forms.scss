@@ -1,0 +1,37 @@
+// Inputs
+.input {
+  background: $white;
+  border: 1px solid $light;
+  border-radius: $r;
+  color: $darker;
+  display: block;
+  font-size: inherit;
+  height: $input-size;
+  padding: 0 $s;
+  resize: none;
+  transition: border-color $t ease, box-shadow $t ease;
+
+  &:focus {
+    border-color: $info;
+    box-shadow: 0 0 4px inset transparentize($info, .5);
+    outline: none;
+  }
+
+  &.wide {
+    display: block;
+    width: 100%;
+  }
+
+  &.tall {
+    height: auto;
+    padding: $s;
+  }
+
+  &.no-resize {
+    resize: none;
+  }
+
+  &::placeholder {
+    color: darken($light, 10%);
+  }
+}

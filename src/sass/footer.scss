@@ -1,0 +1,65 @@
+// Footer
+.footer {
+  align-content: center;
+  background: $lighter;
+  border-top: 1px solid darken($lighter, 5%);
+  color: $medium;
+  display: grid;
+  font-size: 13px;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  padding: 0 $s;
+
+  strong {
+    color: $dark;
+  }
+
+  @include mq-up($screen-md) {
+    padding: 0 ($s * 2);
+  }
+}
+
+// Footer links
+.footer-links {
+  display: grid;
+  grid-column-gap: 1em;
+  grid-template-columns: repeat(3, auto);
+
+  svg {
+    height: 16px;
+    vertical-align: middle;
+    width: 16px;
+  }
+
+  a {
+    color: $darker;
+    text-decoration: none;
+
+    path {
+      fill: $darker;
+      transition: fill $t ease;
+    }
+
+    .label {
+      display: none;
+    }
+
+    &:hover,
+    &:focus {
+      color: $primary;
+
+      path {
+        fill: $primary;
+      }
+    }
+  }
+
+  @include mq-up($screen-sm) {
+    a {
+      .label {
+        display: inline-block;
+        vertical-align: middle;
+      }
+    }
+  }
+}

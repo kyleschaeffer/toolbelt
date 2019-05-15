@@ -1,0 +1,40 @@
+// Dropdowns
+.dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  background: $white;
+  border-radius: $r;
+  box-shadow: 0 4px 24px transparentize($darker, .8);
+  left: 0;
+  padding: ($s * .75) 0;
+  position: absolute;
+  top: 100%;
+  width: 180px;
+  z-index: 1;
+
+  &:not(.active) {
+    display: none;
+  }
+
+  // Sizes
+  &.sm {
+    width: 120px;
+  }
+
+  &.lg {
+    width: 250px;
+  }
+
+  // Alignment
+  &.align-right {
+    left: auto;
+    right: 0;
+  }
+}
+
+.dropdown-value {
+  color: $dark;
+  font-weight: $wb;
+}

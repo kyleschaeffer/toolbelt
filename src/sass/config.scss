@@ -1,16 +1,16 @@
 // Colors
 $black: #000;
 $white: #fff;
-$darker: #2e2e2e;
-$dark: #4e4e4e;
-$medium: #8c9397;
-$light: #e4e4e4;
-$lighter: #f1f2f3;
-$primary: #1d9acc;
-$secondary: #dfb453;
-$info: #5685a0;
-$danger: #993f4b;
-$success: #3b8164;
+$darker: #1f2122;
+$dark: #454849;
+$medium: #767b7e;
+$light: #e3e7e9;
+$lighter: #f2f3f3;
+$primary: #ec523d;
+$secondary: #e0c85d;
+$info: #4cadca;
+$danger: #cc3d50;
+$success: #50c78f;
 
 // Sizes
 $s: 16px;
@@ -33,8 +33,12 @@ $wb: 700;
 $wx: 900;
 
 // Style
-$r: 5px;
+$r: 4px;
 $t: .2s;
+
+// Forms
+$input-size: 50px;
+$btn-size: 40px;
 
 // Screen
 $screen-sm: 600px;
@@ -44,3 +48,7 @@ $screen-lg: 1200px;
 // Containers
 $container-md: 760px;
 $container-lg: 1110px;
+
+// Layout
+$footer-size: 40px;
+$belt-size: 40px;

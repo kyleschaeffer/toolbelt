@@ -19,22 +19,40 @@ export default {
     value: { type: String, default: '' },
   },
 
-  data() {
+  data () {
     return {
       active: false,
+      clickListener: undefined,
+      keyListener: undefined,
     }
   },
 
-  mounted() {
+  /**
+   * Add event listeners on mount
+   */
+  mounted () {
     // Blur listener
-    document.addEventListener('click', e => this.blur(e))
+    this.clickListener = document.addEventListener('click', e => this.blur(e))
 
     // Keydown listener
-    document.addEventListener('keydown', e => this.keydown(e))
+    this.keyListener = document.addEventListener('keydown', e => this.keydown(e))
+  },
+
+  /**
+   * Remove event listeners on destroy
+   */
+  destroyed () {
+    // Remove listeners
+    document.removeEventListener('click', this.clickListener)
+    document.removeEventListener('keydown', this.keyListener)
   },
 
   methods: {
-    toggle() {
+    /**
+     * Toggle the dropdown menu
+     * @return {void}
+     */
+    toggle () {
       this.active = !this.active
     },
 
@@ -53,19 +71,63 @@ export default {
     },
 
     /**
-     * Handle keydowns
+     * Keydown listener
      * @param {KeyboardEvent} e - Keydown event
      * @return {void}
      */
     keydown (e) {
-      // Already inactive, or not focused in dropdown
+      // Inactive, or not focused in dropdown
       if (!this.active || !this.$el.contains(e.target)) return
 
       // Blur on escape
-      if (e.key !== 'Escape') {
+      if (e.key === 'Escape') {
         e.preventDefault()
         this.toggle()
       }
+
+      // Next focusable on down arrow
+      else if (e.key === 'ArrowDown') {
+        // Get focus data
+        const focus = this.focusables()
+
+        // Focus on next focusable
+        if (focus.index + 1 < focus.focusables.length) {
+          e.preventDefault()
+          focus.focusables[focus.index + 1].focus()
+        }
+      }
+
+      // Previous focusable on up arrow
+      else if (e.key === 'ArrowUp') {
+        // Get focus data
+        const focus = this.focusables()
+
+        // Focus on next focusable
+        if (focus.index - 1 >= 0) {
+          e.preventDefault()
+          focus.focusables[focus.index - 1].focus()
+        }
+      }
+    },
+
+    /**
+     * Get all focusables in this component
+     * @return {Object}
+     */
+    focusables () {
+      // Get all focusables
+      const focusables = this.$el.querySelectorAll('button, [href]')
+
+      // Get current focus index
+      let index = 0
+      focusables.forEach((focusable, i) => {
+        if (focusable.matches(':focus')) {
+          index = i
+          return
+        }
+      })
+
+      return { focusables, index }
     },
   },
 }

@@ -9,7 +9,10 @@
           <li v-for="modeKey in Object.keys(modes)" :key="modeKey">
             <button class="menu-item" @click.prevent="selectMode(modeKey)">
               <span :class="`menu-label${mode === modeKey ? ' selected' : ''}`">{{ modes[modeKey].label }}</span>
-              <span class="shortcut">{{ modes[modeKey].shortcut }}</span>
+              <span class="shortcut">
+                <span aria-hidden="true">{{ modes[modeKey].shortcut }}</span>
+                <span class="sr-only">Keyboard shortcut: {{ shortcutLabel(modes[modeKey].shortcut) }}</span>
+              </span>
             </button>
           </li>
         </ul>
@@ -43,7 +46,7 @@ export default {
     Dropdown,
   },
 
-  data() {
+  data () {
     return {
       input: '',
       mode: 'encodeHtml',
@@ -62,7 +65,7 @@ export default {
     },
   },
 
-  mounted() {
+  mounted () {
     this.clipboard()
   },
 
@@ -102,7 +105,10 @@ export default {
       if (!this.input) return
 
       // Method doesn't exist
-      if (!Input[this.mode]) console.warn('Mode not found:', this.mode)
+      if (!Input[this.mode]) {
+        console.error('Mode not found:', this.mode)
+        return
+      }
 
       // Process by mode
       try {
@@ -110,6 +116,21 @@ export default {
       } catch (e) {
         this.output = e
       }
+    },
+
+    /**
+     * Generate accessible ARIA description of given shortcut string
+     * @param {string} shortcut - Shortcut string
+     * @return {string}
+     */
+    shortcutLabel (shortcut) {
+      return shortcut
+        .replace(/⇧/g, ' Shift ')
+        .replace(/⌃/g, ' Control ')
+        .replace(/⌘/g, ' Command ')
+        .replace(/⌥/g, ' Alt ')
+        .replace(/⎋/g, ' Escape ')
+        .replace(/⏎/g, ' Enter ')
     },
   },
 }

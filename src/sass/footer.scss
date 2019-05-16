@@ -6,7 +6,7 @@
   color: $medium;
   display: grid;
   font-size: 13px;
-  grid-template-columns: auto auto;
+  grid-template-columns: repeat(3, auto);
   justify-content: space-between;
   padding: 0 $s;
 
@@ -61,5 +61,15 @@
         vertical-align: middle;
       }
     }
+  }
+}
+
+// Social links
+.social {
+  margin: 0;
+
+  .twitter-follow-button,
+  .twitter-share-button {
+    vertical-align: middle;
   }
 }

@@ -3,7 +3,13 @@
     <toolbelt></toolbelt>
 
     <footer class="footer" role="contentinfo">
-      <p class="colophon"><strong>Toolbelt</strong> by <a href="https://twitter.com/kyleschaeffer">@kyleschaeffer</a></p>
+      <p class="colophon">
+        <strong>Toolbelt</strong> by <a href="https://twitter.com/kyleschaeffer">@kyleschaeffer</a>
+      </p>
+      <p class="social">
+        <a href="https://twitter.com/kyleschaeffer?ref_src=twsrc%5Etfw" class="twitter-follow-button" data-show-screen-name="false" data-dnt="true" data-show-count="false">Follow @kyleschaeffer</a>
+        <a href="https://twitter.com/intent/tweet" class="twitter-share-button" data-text="Nice tool for encoding, decoding, and escaping strings" data-url="https://tbelt.io" data-via="kyleschaeffer" data-related="kyleschaeffer" data-dnt="true">Tweet</a>
+      </p>
       <ul class="footer-links unlist">
         <li>
           <a href="https://github.com/sprtus/toolbelt">

@@ -108,7 +108,7 @@ export default {
       if (!value) return
 
       try {
-        this.output = Input.regexEscape(value)
+        this.output = Input.htmlEncode(value)
       } catch (e) {
         this.output = e
       }

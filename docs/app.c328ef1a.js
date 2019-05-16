@@ -10606,6 +10606,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 //
 //
 //
+//
+//
 var _default = {
   components: {
     Dropdown: _Dropdown.default
@@ -10735,7 +10737,11 @@ exports.default = _default;
         _vm._v(" "),
         _c("span", { staticClass: "separator" }),
         _vm._v(" "),
-        _vm._m(0)
+        _vm._m(0),
+        _vm._v(" "),
+        _c("div", { staticClass: "arrow", attrs: { "aria-hidden": "true" } }, [
+          _vm._v("⬇")
+        ])
       ],
       1
     ),

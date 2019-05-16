@@ -70,6 +70,8 @@
         <span class="tooltip fade-in">Copy output to clipboard <span class="shortcut light">⌃⏎</span></span>
         <span class="tooltip tooltip-copied fade-in">Copied</span>
       </button>
+
+      <div class="arrow" aria-hidden="true">⬇</div>
     </div>
     <div class="out">
       <textarea id="out" v-model="output" class="input tall no-resize code" placeholder="Output" readonly></textarea>

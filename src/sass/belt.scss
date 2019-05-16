@@ -15,6 +15,7 @@
 // Arrow
 .arrow {
   color: transparentize($black, .95);
+  display: none;
   font-family: sans-serif;
   font-size: 50px;
   left: 50%;
@@ -24,4 +25,8 @@
   position: absolute;
   top: 50%;
   z-index: -1;
+
+  @include mq-up($screen-sm) {
+    display: block;
+  }
 }

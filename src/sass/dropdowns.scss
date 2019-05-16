@@ -33,3 +33,21 @@
     right: 0;
   }
 }
+
+.dropdown-label {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.dropdown-value {
+  display: inline-block;
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+
+  @include mq-up($screen-sm) {
+    max-width: none;
+  }
+}

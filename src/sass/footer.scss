@@ -6,7 +6,7 @@
   color: $medium;
   display: grid;
   font-size: 13px;
-  grid-template-columns: repeat(3, auto);
+  grid-template-columns: repeat(2, auto);
   justify-content: space-between;
   padding: 0 $s;
 
@@ -14,8 +14,21 @@
     color: $dark;
   }
 
+  @include mq-up($screen-sm) {
+    grid-template-columns: repeat(3, auto);
+  }
+
   @include mq-up($screen-md) {
     padding: 0 ($s * 2);
+  }
+}
+
+// Colophon
+.colophon {
+  display: none;
+
+  @include mq-up($screen-sm) {
+    display: block;
   }
 }
 

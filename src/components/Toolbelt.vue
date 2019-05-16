@@ -1,7 +1,7 @@
 <template>
   <main class="toolbelt" role="main">
     <div class="in">
-      <textarea v-model="input" class="input tall no-resize code" placeholder="Input"></textarea>
+      <textarea ref="input" v-model="input" class="input tall no-resize code" placeholder="Input"></textarea>
     </div>
     <div class="belt">
       <dropdown ref="modeMenu" :value="modes[mode].label" label="Mode" size="lg">
@@ -20,7 +20,7 @@
 
       <span class="separator"></span>
 
-      <button class="copy-btn btn sm pill info tooltip-anchor" data-clipboard-target="#out">
+      <button ref="copyBtn" class="copy-btn btn sm pill info tooltip-anchor" data-clipboard-target="#out">
         <span class="label">Copy</span>
         <i class="icon copy" aria-hidden="true"></i>
         <span class="tooltip fade-in">Copy output to clipboard <span class="shortcut light">⌃⏎</span></span>
@@ -30,7 +30,7 @@
       <div class="arrow" aria-hidden="true">⬇</div>
     </div>
     <div class="out">
-      <textarea id="out" v-model="output" class="input tall no-resize code" placeholder="Output" readonly></textarea>
+      <textarea id="out" ref="output" v-model="output" class="input tall no-resize code" placeholder="Output" readonly></textarea>
     </div>
   </main>
 </template>
@@ -49,6 +49,7 @@ export default {
   data () {
     return {
       input: '',
+      keyListener: undefined,
       mode: 'encodeHtml',
       modes: Modes,
       output: '',
@@ -65,8 +66,23 @@ export default {
     },
   },
 
+  /**
+   * Add event listeners on mount and initialize toolbelt
+   */
   mounted () {
+    // Keydown listener
+    this.keyListener = document.addEventListener('keydown', e => this.keydown(e))
+
+    // Initialize copy to clipboard button
     this.clipboard()
+  },
+
+  /**
+   * Remove event listeners on destroy
+   */
+  destroyed () {
+    // Remove listeners
+    document.removeEventListener('keydown', this.keyListener)
   },
 
   methods: {
@@ -131,6 +147,33 @@ export default {
         .replace(/⌥/g, ' Alt ')
         .replace(/⎋/g, ' Escape ')
         .replace(/⏎/g, ' Enter ')
+    },
+
+    /**
+     * Keydown listener
+     * @param {KeyboardEvent} e - Keydown event
+     * @return {void}
+     */
+    keydown (e) {
+      // Control not pressed
+      if (!e.ctrlKey) return
+
+      // Mode selection
+      Object.keys(this.modes).forEach(modeKey => {
+        // Key pressed?
+        if (e.key === this.modes[modeKey].shortcut.replace(/⌃/g, '')) {
+          e.preventDefault()
+          this.mode = modeKey
+          return
+        }
+      })
+
+      // Copy output
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        this.$refs.copyBtn.click()
+        this.$refs.input.focus()
+      }
     },
   },
 }

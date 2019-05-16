@@ -1,7 +1,7 @@
 <template>
   <div class="dropdown">
     <button class="btn sm pill light" :aria-expanded="active" @click.prevent="toggle">
-      <span class="dropdown-label">{{ label }}:</span>
+      <span v-if="label" class="dropdown-label">{{ label }}:</span>
       <strong class="dropdown-value">{{ value }}</strong>
       <i class="icon arrow-down flip" aria-hidden="true"></i>
     </button>
@@ -14,9 +14,9 @@
 <script>
 export default {
   props: {
-    label: { type: String, default: '' },
-    value: { type: String, default: '' },
+    label: { type: String, default: undefined },
     size: { type: String, default: undefined },
+    value: { type: String, default: '' },
   },
 
   data() {

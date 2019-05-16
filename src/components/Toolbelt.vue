@@ -4,66 +4,12 @@
       <textarea v-model="input" class="input tall no-resize code" placeholder="Input"></textarea>
     </div>
     <div class="belt">
-      <dropdown label="Mode" value="HTML Encode" size="lg">
+      <dropdown ref="modeMenu" :value="modes[mode].label" label="Mode" size="lg">
         <ul class="menu unlist">
-          <li class="selected">
-            <button class="menu-item">
-              <span class="menu-label">HTML Encode</span>
-              <span class="shortcut">⌃1</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">HTML Decode</span>
-              <span class="shortcut">⌃2</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">JavaScript Escape</span>
-              <span class="shortcut">⌃3</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">CSS Escape</span>
-              <span class="shortcut">⌃4</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">URI Encode</span>
-              <span class="shortcut">⌃5</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">URI Decode</span>
-              <span class="shortcut">⌃6</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">Base64 Encode</span>
-              <span class="shortcut">⌃7</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">Base64 Decode</span>
-              <span class="shortcut">⌃8</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">RegEx Escape</span>
-              <span class="shortcut">⌃9</span>
-            </button>
-          </li>
-          <li>
-            <button class="menu-item">
-              <span class="menu-label">JSON Stringify</span>
-              <span class="shortcut">⌃0</span>
+          <li v-for="modeKey in Object.keys(modes)" :key="modeKey">
+            <button class="menu-item" @click.prevent="selectMode(modeKey)">
+              <span :class="`menu-label${mode === modeKey ? ' selected' : ''}`">{{ modes[modeKey].label }}</span>
+              <span class="shortcut">{{ modes[modeKey].shortcut }}</span>
             </button>
           </li>
         </ul>
@@ -90,6 +36,7 @@
 import ClipboardJS from 'clipboard'
 import Dropdown from './Dropdown.vue'
 import Input from '../input'
+import Modes from '../modes'
 
 export default {
   components: {
@@ -99,32 +46,71 @@ export default {
   data() {
     return {
       input: '',
+      mode: 'encodeHtml',
+      modes: Modes,
       output: '',
     }
   },
 
   watch: {
-    input (value) {
-      if (!value) return
+    input () {
+      this.process()
+    },
 
-      try {
-        this.output = Input.htmlEncode(value)
-      } catch (e) {
-        this.output = e
-      }
+    mode () {
+      this.process()
     },
   },
 
   mounted() {
-    // Copy to clipboard
-    const clipboard = new ClipboardJS('.copy-btn')
-    clipboard.on('success', function(e) {
-      e.trigger.classList.add('copied')
-      setTimeout(() => {
-        e.trigger.classList.remove('copied')
-      }, 3000)
-      e.clearSelection()
-    })
+    this.clipboard()
+  },
+
+  methods: {
+    /**
+     * Bind copy to clipboard events
+     * @return {void}
+     */
+    clipboard () {
+      // Copy to clipboard
+      const clipboard = new ClipboardJS('.copy-btn')
+      clipboard.on('success', function(e) {
+        e.trigger.classList.add('copied')
+        setTimeout(() => {
+          e.trigger.classList.remove('copied')
+        }, 3000)
+        e.clearSelection()
+      })
+    },
+
+    /**
+     * Select a new mode
+     * @param {string} modeKey - New mode key
+     * @return {void}
+     */
+    selectMode (modeKey) {
+      this.mode = modeKey
+      this.$refs.modeMenu.toggle()
+    },
+
+    /**
+     * Process current input
+     * @return {void}
+     */
+    process () {
+      // No input
+      if (!this.input) return
+
+      // Method doesn't exist
+      if (!Input[this.mode]) console.warn('Mode not found:', this.mode)
+
+      // Process by mode
+      try {
+        this.output = Input[this.mode](this.input)
+      } catch (e) {
+        this.output = e
+      }
+    },
   },
 }
 </script>

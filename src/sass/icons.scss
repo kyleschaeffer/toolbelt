@@ -15,4 +15,35 @@
       width: 0;
     }
   }
+
+  // Copy
+  &.copy {
+    height: 12px;
+    position: relative;
+    width: 10px;
+
+    &::before,
+    &::after {
+      border: 1px solid $white;
+      border-radius: 1px;
+      content: '';
+      display: block;
+      height: 9px;
+      position: absolute;
+      transition: border-color .3s ease;
+      width: 7px;
+    }
+
+    &::before {
+      left: 0;
+      top: 0;
+    }
+
+    &::after {
+      background: $info;
+      bottom: 0;
+      box-shadow: 0 0 0 1px $info;
+      right: 0;
+    }
+  }
 }

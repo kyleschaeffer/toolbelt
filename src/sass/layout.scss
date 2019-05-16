@@ -29,4 +29,15 @@
 
 .out {
   padding-top: 0;
+  position: relative;
+
+  .copy-btn {
+    position: absolute;
+    right: $s;
+    top: 0;
+
+    @include mq-up($screen-md) {
+      right: $s * 2;
+    }
+  }
 }

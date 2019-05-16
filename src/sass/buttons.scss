@@ -13,6 +13,10 @@
   padding: 0 ($s * .75);
   transition: background-color $t ease, border-color $t ease;
 
+  strong {
+    color: $dark;
+  }
+
   &:hover,
   &:focus {
     background-color: darken($dark, 5%);
@@ -106,6 +110,11 @@
     &:focus {
       background-color: darken($success, 5%);
     }
+  }
+
+  &.clear {
+    background-color: transparent;
+    border-color: transparent;
   }
 
   // Focus outline

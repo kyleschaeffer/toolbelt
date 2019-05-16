@@ -2,7 +2,7 @@
   <div class="dropdown">
     <button class="btn sm pill light" :aria-expanded="active" @click.prevent="toggle">
       <span class="dropdown-label">{{ label }}:</span>
-      <span class="dropdown-value">{{ value }}</span>
+      <strong class="dropdown-value">{{ value }}</strong>
       <i class="icon arrow-down flip" aria-hidden="true"></i>
     </button>
     <div :class="{ 'dropdown-menu': true, 'drop-in': true, 'active': active }">

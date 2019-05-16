@@ -24,11 +24,3 @@
     box-shadow: 0 0 3px inset transparentize($info, .5);
   }
 }
-
-// Shortcuts
-.menu-shortcut {
-  color: lighten($medium, 20%);
-  font-family: sans-serif;
-  font-size: .75em;
-  letter-spacing: .2em;
-}

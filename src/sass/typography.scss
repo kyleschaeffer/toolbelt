@@ -143,3 +143,15 @@ pre,
 pre {
   overflow-x: auto;
 }
+
+// Shortcuts
+.shortcut {
+  color: lighten($medium, 20%);
+  font-family: sans-serif;
+  font-size: .75em;
+  letter-spacing: .2em;
+
+  &.light {
+    color: transparentize($white, .5);
+  }
+}

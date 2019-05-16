@@ -5,7 +5,7 @@
       <strong class="dropdown-value">{{ value }}</strong>
       <i class="icon arrow-down flip" aria-hidden="true"></i>
     </button>
-    <div :class="{ 'dropdown-menu': true, 'drop-in': true, 'active': active }">
+    <div :class="`dropdown-menu drop-in${active ? ' active' : ''}${size ? ` ${size}` : ''}`">
       <slot></slot>
     </div>
   </div>
@@ -16,6 +16,7 @@ export default {
   props: {
     label: { type: String, default: '' },
     value: { type: String, default: '' },
+    size: { type: String, default: undefined },
   },
 
   data() {

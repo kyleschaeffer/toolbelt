@@ -4,59 +4,66 @@
       <textarea v-model="input" class="input tall no-resize code" placeholder="Input"></textarea>
     </div>
     <div class="belt">
-      <dropdown label="Mode" value="HTML">
+      <dropdown label="Mode" value="HTML Encode" size="lg">
         <ul class="menu unlist">
           <li class="selected">
             <button class="menu-item">
-              <span class="menu-label">HTML</span>
+              <span class="menu-label">HTML Encode</span>
               <span class="shortcut">⌃1</span>
             </button>
           </li>
           <li>
             <button class="menu-item">
-              <span class="menu-label">CSS</span>
+              <span class="menu-label">HTML Decode</span>
               <span class="shortcut">⌃2</span>
             </button>
           </li>
           <li>
             <button class="menu-item">
-              <span class="menu-label">JS</span>
+              <span class="menu-label">JavaScript Escape</span>
               <span class="shortcut">⌃3</span>
             </button>
           </li>
           <li>
             <button class="menu-item">
-              <span class="menu-label">URL</span>
+              <span class="menu-label">CSS Escape</span>
               <span class="shortcut">⌃4</span>
             </button>
           </li>
           <li>
             <button class="menu-item">
-              <span class="menu-label">Unicode</span>
+              <span class="menu-label">URI Encode</span>
               <span class="shortcut">⌃5</span>
             </button>
           </li>
-        </ul>
-      </dropdown>
-
-      <dropdown label="Operation" value="Encode">
-        <ul class="menu unlist">
-          <li class="selected">
+          <li>
             <button class="menu-item">
-              <span class="menu-label">Encode</span>
-              <span class="shortcut">⇧⌃1</span>
+              <span class="menu-label">URI Decode</span>
+              <span class="shortcut">⌃6</span>
             </button>
           </li>
           <li>
             <button class="menu-item">
-              <span class="menu-label">Decode</span>
-              <span class="shortcut">⇧⌃2</span>
+              <span class="menu-label">Base64 Encode</span>
+              <span class="shortcut">⌃7</span>
             </button>
           </li>
           <li>
             <button class="menu-item">
-              <span class="menu-label">Escape</span>
-              <span class="shortcut">⇧⌃3</span>
+              <span class="menu-label">Base64 Decode</span>
+              <span class="shortcut">⌃8</span>
+            </button>
+          </li>
+          <li>
+            <button class="menu-item">
+              <span class="menu-label">RegEx Escape</span>
+              <span class="shortcut">⌃9</span>
+            </button>
+          </li>
+          <li>
+            <button class="menu-item">
+              <span class="menu-label">JSON Stringify</span>
+              <span class="shortcut">⌃0</span>
             </button>
           </li>
         </ul>
@@ -82,6 +89,7 @@
 <script>
 import ClipboardJS from 'clipboard'
 import Dropdown from './Dropdown.vue'
+import Input from '../input'
 
 export default {
   components: {
@@ -93,6 +101,30 @@ export default {
       input: '',
       output: '',
     }
+  },
+
+  watch: {
+    input (value) {
+      if (!value) return
+
+      try {
+        this.output = Input.regexEscape(value)
+      } catch (e) {
+        this.output = e
+      }
+    },
+  },
+
+  mounted() {
+    // Copy to clipboard
+    const clipboard = new ClipboardJS('.copy-btn')
+    clipboard.on('success', function(e) {
+      e.trigger.classList.add('copied')
+      setTimeout(() => {
+        e.trigger.classList.remove('copied')
+      }, 3000)
+      e.clearSelection()
+    })
   },
 }
 </script>

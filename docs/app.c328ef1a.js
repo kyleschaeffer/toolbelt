@@ -1282,381 +1282,7 @@ var define;
     }])
   );
 });
-},{}],"../node_modules/strict-uri-encode/index.js":[function(require,module,exports) {
-'use strict';
-
-module.exports = str => encodeURIComponent(str).replace(/[!'()*]/g, x => `%${x.charCodeAt(0).toString(16).toUpperCase()}`);
-},{}],"../node_modules/decode-uri-component/index.js":[function(require,module,exports) {
-'use strict';
-
-var token = '%[a-f0-9]{2}';
-var singleMatcher = new RegExp(token, 'gi');
-var multiMatcher = new RegExp('(' + token + ')+', 'gi');
-
-function decodeComponents(components, split) {
-  try {
-    // Try to decode the entire string first
-    return decodeURIComponent(components.join(''));
-  } catch (err) {// Do nothing
-  }
-
-  if (components.length === 1) {
-    return components;
-  }
-
-  split = split || 1; // Split the array in 2 parts
-
-  var left = components.slice(0, split);
-  var right = components.slice(split);
-  return Array.prototype.concat.call([], decodeComponents(left), decodeComponents(right));
-}
-
-function decode(input) {
-  try {
-    return decodeURIComponent(input);
-  } catch (err) {
-    var tokens = input.match(singleMatcher);
-
-    for (var i = 1; i < tokens.length; i++) {
-      input = decodeComponents(tokens, i).join('');
-      tokens = input.match(singleMatcher);
-    }
-
-    return input;
-  }
-}
-
-function customDecodeURIComponent(input) {
-  // Keep track of all the replacements and prefill the map with the `BOM`
-  var replaceMap = {
-    '%FE%FF': '\uFFFD\uFFFD',
-    '%FF%FE': '\uFFFD\uFFFD'
-  };
-  var match = multiMatcher.exec(input);
-
-  while (match) {
-    try {
-      // Decode as big chunks as possible
-      replaceMap[match[0]] = decodeURIComponent(match[0]);
-    } catch (err) {
-      var result = decode(match[0]);
-
-      if (result !== match[0]) {
-        replaceMap[match[0]] = result;
-      }
-    }
-
-    match = multiMatcher.exec(input);
-  } // Add `%C2` at the end of the map to make sure it does not replace the combinator before everything else
-
-
-  replaceMap['%C2'] = '\uFFFD';
-  var entries = Object.keys(replaceMap);
-
-  for (var i = 0; i < entries.length; i++) {
-    // Replace all decoded components
-    var key = entries[i];
-    input = input.replace(new RegExp(key, 'g'), replaceMap[key]);
-  }
-
-  return input;
-}
-
-module.exports = function (encodedURI) {
-  if (typeof encodedURI !== 'string') {
-    throw new TypeError('Expected `encodedURI` to be of type `string`, got `' + typeof encodedURI + '`');
-  }
-
-  try {
-    encodedURI = encodedURI.replace(/\+/g, ' '); // Try the built in decoder first
-
-    return decodeURIComponent(encodedURI);
-  } catch (err) {
-    // Fallback to a more advanced decoder
-    return customDecodeURIComponent(encodedURI);
-  }
-};
-},{}],"../node_modules/split-on-first/index.js":[function(require,module,exports) {
-'use strict';
-
-module.exports = (string, separator) => {
-  if (!(typeof string === 'string' && typeof separator === 'string')) {
-    throw new TypeError('Expected the arguments to be of type `string`');
-  }
-
-  if (separator === '') {
-    return [string];
-  }
-
-  const separatorIndex = string.indexOf(separator);
-
-  if (separatorIndex === -1) {
-    return [string];
-  }
-
-  return [string.slice(0, separatorIndex), string.slice(separatorIndex + separator.length)];
-};
-},{}],"../node_modules/query-string/index.js":[function(require,module,exports) {
-'use strict';
-
-const strictUriEncode = require('strict-uri-encode');
-
-const decodeComponent = require('decode-uri-component');
-
-const splitOnFirst = require('split-on-first');
-
-function encoderForArrayFormat(options) {
-  switch (options.arrayFormat) {
-    case 'index':
-      return key => (result, value) => {
-        const index = result.length;
-
-        if (value === undefined) {
-          return result;
-        }
-
-        if (value === null) {
-          return [...result, [encode(key, options), '[', index, ']'].join('')];
-        }
-
-        return [...result, [encode(key, options), '[', encode(index, options), ']=', encode(value, options)].join('')];
-      };
-
-    case 'bracket':
-      return key => (result, value) => {
-        if (value === undefined) {
-          return result;
-        }
-
-        if (value === null) {
-          return [...result, [encode(key, options), '[]'].join('')];
-        }
-
-        return [...result, [encode(key, options), '[]=', encode(value, options)].join('')];
-      };
-
-    case 'comma':
-      return key => (result, value, index) => {
-        if (value === null || value === undefined || value.length === 0) {
-          return result;
-        }
-
-        if (index === 0) {
-          return [[encode(key, options), '=', encode(value, options)].join('')];
-        }
-
-        return [[result, encode(value, options)].join(',')];
-      };
-
-    default:
-      return key => (result, value) => {
-        if (value === undefined) {
-          return result;
-        }
-
-        if (value === null) {
-          return [...result, encode(key, options)];
-        }
-
-        return [...result, [encode(key, options), '=', encode(value, options)].join('')];
-      };
-  }
-}
-
-function parserForArrayFormat(options) {
-  let result;
-
-  switch (options.arrayFormat) {
-    case 'index':
-      return (key, value, accumulator) => {
-        result = /\[(\d*)\]$/.exec(key);
-        key = key.replace(/\[\d*\]$/, '');
-
-        if (!result) {
-          accumulator[key] = value;
-          return;
-        }
-
-        if (accumulator[key] === undefined) {
-          accumulator[key] = {};
-        }
-
-        accumulator[key][result[1]] = value;
-      };
-
-    case 'bracket':
-      return (key, value, accumulator) => {
-        result = /(\[\])$/.exec(key);
-        key = key.replace(/\[\]$/, '');
-
-        if (!result) {
-          accumulator[key] = value;
-          return;
-        }
-
-        if (accumulator[key] === undefined) {
-          accumulator[key] = [value];
-          return;
-        }
-
-        accumulator[key] = [].concat(accumulator[key], value);
-      };
-
-    case 'comma':
-      return (key, value, accumulator) => {
-        const isArray = typeof value === 'string' && value.split('').indexOf(',') > -1;
-        const newValue = isArray ? value.split(',') : value;
-        accumulator[key] = newValue;
-      };
-
-    default:
-      return (key, value, accumulator) => {
-        if (accumulator[key] === undefined) {
-          accumulator[key] = value;
-          return;
-        }
-
-        accumulator[key] = [].concat(accumulator[key], value);
-      };
-  }
-}
-
-function encode(value, options) {
-  if (options.encode) {
-    return options.strict ? strictUriEncode(value) : encodeURIComponent(value);
-  }
-
-  return value;
-}
-
-function decode(value, options) {
-  if (options.decode) {
-    return decodeComponent(value);
-  }
-
-  return value;
-}
-
-function keysSorter(input) {
-  if (Array.isArray(input)) {
-    return input.sort();
-  }
-
-  if (typeof input === 'object') {
-    return keysSorter(Object.keys(input)).sort((a, b) => Number(a) - Number(b)).map(key => input[key]);
-  }
-
-  return input;
-}
-
-function removeHash(input) {
-  const hashStart = input.indexOf('#');
-
-  if (hashStart !== -1) {
-    input = input.slice(0, hashStart);
-  }
-
-  return input;
-}
-
-function extract(input) {
-  input = removeHash(input);
-  const queryStart = input.indexOf('?');
-
-  if (queryStart === -1) {
-    return '';
-  }
-
-  return input.slice(queryStart + 1);
-}
-
-function parse(input, options) {
-  options = Object.assign({
-    decode: true,
-    arrayFormat: 'none'
-  }, options);
-  const formatter = parserForArrayFormat(options); // Create an object with no prototype
-
-  const ret = Object.create(null);
-
-  if (typeof input !== 'string') {
-    return ret;
-  }
-
-  input = input.trim().replace(/^[?#&]/, '');
-
-  if (!input) {
-    return ret;
-  }
-
-  for (const param of input.split('&')) {
-    let [key, value] = splitOnFirst(param.replace(/\+/g, ' '), '='); // Missing `=` should be `null`:
-    // http://w3.org/TR/2012/WD-url-20120524/#collect-url-parameters
-
-    value = value === undefined ? null : decode(value, options);
-    formatter(decode(key, options), value, ret);
-  }
-
-  return Object.keys(ret).sort().reduce((result, key) => {
-    const value = ret[key];
-
-    if (Boolean(value) && typeof value === 'object' && !Array.isArray(value)) {
-      // Sort object keys, not values
-      result[key] = keysSorter(value);
-    } else {
-      result[key] = value;
-    }
-
-    return result;
-  }, Object.create(null));
-}
-
-exports.extract = extract;
-exports.parse = parse;
-
-exports.stringify = (object, options) => {
-  if (!object) {
-    return '';
-  }
-
-  options = Object.assign({
-    encode: true,
-    strict: true,
-    arrayFormat: 'none'
-  }, options);
-  const formatter = encoderForArrayFormat(options);
-  const keys = Object.keys(object);
-
-  if (options.sort !== false) {
-    keys.sort(options.sort);
-  }
-
-  return keys.map(key => {
-    const value = object[key];
-
-    if (value === undefined) {
-      return '';
-    }
-
-    if (value === null) {
-      return encode(key, options);
-    }
-
-    if (Array.isArray(value)) {
-      return value.reduce(formatter(key), []).join('&');
-    }
-
-    return encode(key, options) + '=' + encode(value, options);
-  }).filter(x => x.length > 0).join('&');
-};
-
-exports.parseUrl = (input, options) => {
-  return {
-    url: removeHash(input).split('?')[0] || '',
-    query: parse(extract(input), options)
-  };
-};
-},{"strict-uri-encode":"../node_modules/strict-uri-encode/index.js","decode-uri-component":"../node_modules/decode-uri-component/index.js","split-on-first":"../node_modules/split-on-first/index.js"}],"../node_modules/vue-hot-reload-api/dist/index.js":[function(require,module,exports) {
+},{}],"../node_modules/vue-hot-reload-api/dist/index.js":[function(require,module,exports) {
 var Vue // late bind
 var version
 var map = Object.create(null)
@@ -10383,6 +10009,10 @@ var _default = {
     value: {
       type: String,
       default: ''
+    },
+    size: {
+      type: String,
+      default: undefined
     }
   },
 
@@ -10478,7 +10108,12 @@ exports.default = _default;
     _vm._v(" "),
     _c(
       "div",
-      { class: { "dropdown-menu": true, "drop-in": true, active: _vm.active } },
+      {
+        class:
+          "dropdown-menu drop-in" +
+          (_vm.active ? " active" : "") +
+          (_vm.size ? " " + _vm.size : "")
+      },
       [_vm._t("default")],
       2
     )
@@ -10513,7 +10148,1546 @@ render._withStripped = true
         
       }
     })();
-},{"vue-hot-reload-api":"../node_modules/vue-hot-reload-api/dist/index.js","vue":"../node_modules/vue/dist/vue.runtime.esm.js"}],"components/Toolbelt.vue":[function(require,module,exports) {
+},{"vue-hot-reload-api":"../node_modules/vue-hot-reload-api/dist/index.js","vue":"../node_modules/vue/dist/vue.runtime.esm.js"}],"entities.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.Entities = void 0;
+
+/**
+ * Unicode characters and their corresponding HTML entity names
+ */
+const Entities = {
+  '!': ['excl'],
+  '"': ['quot', 'QUOT'],
+  '#': ['num'],
+  '$': ['dollar'],
+  '%': ['percnt'],
+  '&': ['amp', 'AMP'],
+  '\'': ['apos'],
+  '(': ['lpar'],
+  ')': ['rpar'],
+  '*': ['ast', 'midast'],
+  '+': ['plus'],
+  ',': ['comma'],
+  '.': ['period'],
+  '/': ['sol'],
+  ':': ['colon'],
+  ';': ['semi'],
+  '<': ['lt', 'LT'],
+  '=': ['equals'],
+  '>': ['gt', 'GT'],
+  '?': ['quest'],
+  '@': ['commat'],
+  '[': ['lsqb', 'lbrack'],
+  '\\': ['bsol'],
+  ']': ['rsqb', 'rbrack'],
+  '^': ['Hat'],
+  '_': ['lowbar'],
+  '`': ['grave', 'DiacriticalGrave'],
+  '{': ['lcub', 'lbrace'],
+  '|': ['verbar', 'vert', 'VerticalLine'],
+  '}': ['rcub', 'rbrace'],
+  ' ': ['nbsp', 'NonBreakingSpace'],
+  '¡': ['iexcl'],
+  '¢': ['cent'],
+  '£': ['pound'],
+  '¤': ['curren'],
+  '¥': ['yen'],
+  '¦': ['brvbar'],
+  '§': ['sect'],
+  '¨': ['Dot', 'die', 'DoubleDot', 'uml'],
+  '©': ['copy', 'COPY'],
+  'ª': ['ordf'],
+  '«': ['laquo'],
+  '¬': ['not'],
+  '­': ['shy'],
+  '®': ['reg', 'circledR', 'REG'],
+  '¯': ['macr', 'OverBar', 'strns'],
+  '°': ['deg'],
+  '±': ['plusmn', 'pm', 'PlusMinus'],
+  '²': ['sup2'],
+  '³': ['sup3'],
+  '´': ['acute', 'DiacriticalAcute'],
+  'µ': ['micro'],
+  '¶': ['para'],
+  '·': ['middot', 'centerdot', 'CenterDot'],
+  '¸': ['cedil', 'Cedilla'],
+  '¹': ['sup1'],
+  'º': ['ordm'],
+  '»': ['raquo'],
+  '¼': ['frac14'],
+  '½': ['frac12', 'half'],
+  '¾': ['frac34'],
+  '¿': ['iquest'],
+  'À': ['Agrave'],
+  'Á': ['Aacute'],
+  'Â': ['Acirc'],
+  'Ã': ['Atilde'],
+  'Ä': ['Auml'],
+  'Å': ['Aring'],
+  'Æ': ['AElig'],
+  'Ç': ['Ccedil'],
+  'È': ['Egrave'],
+  'É': ['Eacute'],
+  'Ê': ['Ecirc'],
+  'Ë': ['Euml'],
+  'Ì': ['Igrave'],
+  'Í': ['Iacute'],
+  'Î': ['Icirc'],
+  'Ï': ['Iuml'],
+  'Ð': ['ETH'],
+  'Ñ': ['Ntilde'],
+  'Ò': ['Ograve'],
+  'Ó': ['Oacute'],
+  'Ô': ['Ocirc'],
+  'Õ': ['Otilde'],
+  'Ö': ['Ouml'],
+  '×': ['times'],
+  'Ø': ['Oslash'],
+  'Ù': ['Ugrave'],
+  'Ú': ['Uacute'],
+  'Û': ['Ucirc'],
+  'Ü': ['Uuml'],
+  'Ý': ['Yacute'],
+  'Þ': ['THORN'],
+  'ß': ['szlig'],
+  'à': ['agrave'],
+  'á': ['aacute'],
+  'â': ['acirc'],
+  'ã': ['atilde'],
+  'ä': ['auml'],
+  'å': ['aring'],
+  'æ': ['aelig'],
+  'ç': ['ccedil'],
+  'è': ['egrave'],
+  'é': ['eacute'],
+  'ê': ['ecirc'],
+  'ë': ['euml'],
+  'ì': ['igrave'],
+  'í': ['iacute'],
+  'î': ['icirc'],
+  'ï': ['iuml'],
+  'ð': ['eth'],
+  'ñ': ['ntilde'],
+  'ò': ['ograve'],
+  'ó': ['oacute'],
+  'ô': ['ocirc'],
+  'õ': ['otilde'],
+  'ö': ['ouml'],
+  '÷': ['divide', 'div'],
+  'ø': ['oslash'],
+  'ù': ['ugrave'],
+  'ú': ['uacute'],
+  'û': ['ucirc'],
+  'ü': ['uuml'],
+  'ý': ['yacute'],
+  'þ': ['thorn'],
+  'ÿ': ['yuml'],
+  'Ā': ['Amacr'],
+  'ā': ['amacr'],
+  'Ă': ['Abreve'],
+  'ă': ['abreve'],
+  'Ą': ['Aogon'],
+  'ą': ['aogon'],
+  'Ć': ['Cacute'],
+  'ć': ['cacute'],
+  'Ĉ': ['Ccirc'],
+  'ĉ': ['ccirc'],
+  'Ċ': ['Cdot'],
+  'ċ': ['cdot'],
+  'Č': ['Ccaron'],
+  'č': ['ccaron'],
+  'Ď': ['Dcaron'],
+  'ď': ['dcaron'],
+  'Đ': ['Dstrok'],
+  'đ': ['dstrok'],
+  'Ē': ['Emacr'],
+  'ē': ['emacr'],
+  'Ė': ['Edot'],
+  'ė': ['edot'],
+  'Ę': ['Eogon'],
+  'ę': ['eogon'],
+  'Ě': ['Ecaron'],
+  'ě': ['ecaron'],
+  'Ĝ': ['Gcirc'],
+  'ĝ': ['gcirc'],
+  'Ğ': ['Gbreve'],
+  'ğ': ['gbreve'],
+  'Ġ': ['Gdot'],
+  'ġ': ['gdot'],
+  'Ģ': ['Gcedil'],
+  'Ĥ': ['Hcirc'],
+  'ĥ': ['hcirc'],
+  'Ħ': ['Hstrok'],
+  'ħ': ['hstrok'],
+  'Ĩ': ['Itilde'],
+  'ĩ': ['itilde'],
+  'Ī': ['Imacr'],
+  'ī': ['imacr'],
+  'Į': ['Iogon'],
+  'į': ['iogon'],
+  'İ': ['Idot'],
+  'ı': ['imath', 'inodot'],
+  'Ĳ': ['IJlig'],
+  'ĳ': ['ijlig'],
+  'Ĵ': ['Jcirc'],
+  'ĵ': ['jcirc'],
+  'Ķ': ['Kcedil'],
+  'ķ': ['kcedil'],
+  'ĸ': ['kgreen'],
+  'Ĺ': ['Lacute'],
+  'ĺ': ['lacute'],
+  'Ļ': ['Lcedil'],
+  'ļ': ['lcedil'],
+  'Ľ': ['Lcaron'],
+  'ľ': ['lcaron'],
+  'Ŀ': ['Lmidot'],
+  'ŀ': ['lmidot'],
+  'Ł': ['Lstrok'],
+  'ł': ['lstrok'],
+  'Ń': ['Nacute'],
+  'ń': ['nacute'],
+  'Ņ': ['Ncedil'],
+  'ņ': ['ncedil'],
+  'Ň': ['Ncaron'],
+  'ň': ['ncaron'],
+  'ŉ': ['napos'],
+  'Ŋ': ['ENG'],
+  'ŋ': ['eng'],
+  'Ō': ['Omacr'],
+  'ō': ['omacr'],
+  'Ő': ['Odblac'],
+  'ő': ['odblac'],
+  'Œ': ['OElig'],
+  'œ': ['oelig'],
+  'Ŕ': ['Racute'],
+  'ŕ': ['racute'],
+  'Ŗ': ['Rcedil'],
+  'ŗ': ['rcedil'],
+  'Ř': ['Rcaron'],
+  'ř': ['rcaron'],
+  'Ś': ['Sacute'],
+  'ś': ['sacute'],
+  'Ŝ': ['Scirc'],
+  'ŝ': ['scirc'],
+  'Ş': ['Scedil'],
+  'ş': ['scedil'],
+  'Š': ['Scaron'],
+  'š': ['scaron'],
+  'Ţ': ['Tcedil'],
+  'ţ': ['tcedil'],
+  'Ť': ['Tcaron'],
+  'ť': ['tcaron'],
+  'Ŧ': ['Tstrok'],
+  'ŧ': ['tstrok'],
+  'Ũ': ['Utilde'],
+  'ũ': ['utilde'],
+  'Ū': ['Umacr'],
+  'ū': ['umacr'],
+  'Ŭ': ['Ubreve'],
+  'ŭ': ['ubreve'],
+  'Ů': ['Uring'],
+  'ů': ['uring'],
+  'Ű': ['Udblac'],
+  'ű': ['udblac'],
+  'Ų': ['Uogon'],
+  'ų': ['uogon'],
+  'Ŵ': ['Wcirc'],
+  'ŵ': ['wcirc'],
+  'Ŷ': ['Ycirc'],
+  'ŷ': ['ycirc'],
+  'Ÿ': ['Yuml'],
+  'Ź': ['Zacute'],
+  'ź': ['zacute'],
+  'Ż': ['Zdot'],
+  'ż': ['zdot'],
+  'Ž': ['Zcaron'],
+  'ž': ['zcaron'],
+  'ƒ': ['fnof'],
+  'Ƶ': ['imped'],
+  'ǵ': ['gacute'],
+  'ȷ': ['jmath'],
+  'ˆ': ['circ'],
+  'ˇ': ['caron', 'Hacek'],
+  '˘': ['breve', 'Breve'],
+  '˙': ['dot', 'DiacriticalDot'],
+  '˚': ['ring'],
+  '˛': ['ogon'],
+  '˜': ['tilde', 'DiacriticalTilde'],
+  '˝': ['dblac', 'DiacriticalDoubleAcute'],
+  '̑': ['DownBreve'],
+  '̲': ['UnderBar'],
+  'Α': ['Alpha'],
+  'Β': ['Beta'],
+  'Γ': ['Gamma'],
+  'Δ': ['Delta'],
+  'Ε': ['Epsilon'],
+  'Ζ': ['Zeta'],
+  'Η': ['Eta'],
+  'Θ': ['Theta'],
+  'Ι': ['Iota'],
+  'Κ': ['Kappa'],
+  'Λ': ['Lambda'],
+  'Μ': ['Mu'],
+  'Ν': ['Nu'],
+  'Ξ': ['Xi'],
+  'Ο': ['Omicron'],
+  'Π': ['Pi'],
+  'Ρ': ['Rho'],
+  'Σ': ['Sigma'],
+  'Τ': ['Tau'],
+  'Υ': ['Upsilon'],
+  'Φ': ['Phi'],
+  'Χ': ['Chi'],
+  'Ψ': ['Psi'],
+  'Ω': ['Omega'],
+  'α': ['alpha'],
+  'β': ['beta'],
+  'γ': ['gamma'],
+  'δ': ['delta'],
+  'ε': ['epsiv', 'varepsilon', 'epsilon'],
+  'ζ': ['zeta'],
+  'η': ['eta'],
+  'θ': ['theta'],
+  'ι': ['iota'],
+  'κ': ['kappa'],
+  'λ': ['lambda'],
+  'μ': ['mu'],
+  'ν': ['nu'],
+  'ξ': ['xi'],
+  'ο': ['omicron'],
+  'π': ['pi'],
+  'ρ': ['rho'],
+  'ς': ['sigmav', 'varsigma', 'sigmaf'],
+  'σ': ['sigma'],
+  'τ': ['tau'],
+  'υ': ['upsi', 'upsilon'],
+  'φ': ['phi', 'phiv', 'varphi'],
+  'χ': ['chi'],
+  'ψ': ['psi'],
+  'ω': ['omega'],
+  'ϑ': ['thetav', 'vartheta', 'thetasym'],
+  'ϒ': ['Upsi', 'upsih'],
+  'ϕ': ['straightphi'],
+  'ϖ': ['piv', 'varpi'],
+  'Ϝ': ['Gammad'],
+  'ϝ': ['gammad', 'digamma'],
+  'ϰ': ['kappav', 'varkappa'],
+  'ϱ': ['rhov', 'varrho'],
+  'ϵ': ['epsi', 'straightepsilon'],
+  '϶': ['bepsi', 'backepsilon'],
+  'Ё': ['IOcy'],
+  'Ђ': ['DJcy'],
+  'Ѓ': ['GJcy'],
+  'Є': ['Jukcy'],
+  'Ѕ': ['DScy'],
+  'І': ['Iukcy'],
+  'Ї': ['YIcy'],
+  'Ј': ['Jsercy'],
+  'Љ': ['LJcy'],
+  'Њ': ['NJcy'],
+  'Ћ': ['TSHcy'],
+  'Ќ': ['KJcy'],
+  'Ў': ['Ubrcy'],
+  'Џ': ['DZcy'],
+  'А': ['Acy'],
+  'Б': ['Bcy'],
+  'В': ['Vcy'],
+  'Г': ['Gcy'],
+  'Д': ['Dcy'],
+  'Е': ['IEcy'],
+  'Ж': ['ZHcy'],
+  'З': ['Zcy'],
+  'И': ['Icy'],
+  'Й': ['Jcy'],
+  'К': ['Kcy'],
+  'Л': ['Lcy'],
+  'М': ['Mcy'],
+  'Н': ['Ncy'],
+  'О': ['Ocy'],
+  'П': ['Pcy'],
+  'Р': ['Rcy'],
+  'С': ['Scy'],
+  'Т': ['Tcy'],
+  'У': ['Ucy'],
+  'Ф': ['Fcy'],
+  'Х': ['KHcy'],
+  'Ц': ['TScy'],
+  'Ч': ['CHcy'],
+  'Ш': ['SHcy'],
+  'Щ': ['SHCHcy'],
+  'Ъ': ['HARDcy'],
+  'Ы': ['Ycy'],
+  'Ь': ['SOFTcy'],
+  'Э': ['Ecy'],
+  'Ю': ['YUcy'],
+  'Я': ['YAcy'],
+  'а': ['acy'],
+  'б': ['bcy'],
+  'в': ['vcy'],
+  'г': ['gcy'],
+  'д': ['dcy'],
+  'е': ['iecy'],
+  'ж': ['zhcy'],
+  'з': ['zcy'],
+  'и': ['icy'],
+  'й': ['jcy'],
+  'к': ['kcy'],
+  'л': ['lcy'],
+  'м': ['mcy'],
+  'н': ['ncy'],
+  'о': ['ocy'],
+  'п': ['pcy'],
+  'р': ['rcy'],
+  'с': ['scy'],
+  'т': ['tcy'],
+  'у': ['ucy'],
+  'ф': ['fcy'],
+  'х': ['khcy'],
+  'ц': ['tscy'],
+  'ч': ['chcy'],
+  'ш': ['shcy'],
+  'щ': ['shchcy'],
+  'ъ': ['hardcy'],
+  'ы': ['ycy'],
+  'ь': ['softcy'],
+  'э': ['ecy'],
+  'ю': ['yucy'],
+  'я': ['yacy'],
+  'ё': ['iocy'],
+  'ђ': ['djcy'],
+  'ѓ': ['gjcy'],
+  'є': ['jukcy'],
+  'ѕ': ['dscy'],
+  'і': ['iukcy'],
+  'ї': ['yicy'],
+  'ј': ['jsercy'],
+  'љ': ['ljcy'],
+  'њ': ['njcy'],
+  'ћ': ['tshcy'],
+  'ќ': ['kjcy'],
+  'ў': ['ubrcy'],
+  'џ': ['dzcy'],
+  ' ': ['ensp'],
+  ' ': ['emsp'],
+  ' ': ['emsp13'],
+  ' ': ['emsp14'],
+  ' ': ['numsp'],
+  ' ': ['puncsp'],
+  ' ': ['thinsp', 'ThinSpace'],
+  ' ': ['hairsp', 'VeryThinSpace'],
+  '​': ['ZeroWidthSpace', 'NegativeVeryThinSpace', 'NegativeThinSpace', 'NegativeMediumSpace', 'NegativeThickSpace'],
+  '‌': ['zwnj'],
+  '‍': ['zwj'],
+  '‎': ['lrm'],
+  '‏': ['rlm'],
+  '‐': ['hyphen', 'dash'],
+  '–': ['ndash'],
+  '—': ['mdash'],
+  '―': ['horbar'],
+  '‖': ['Verbar', 'Vert'],
+  '‘': ['lsquo', 'OpenCurlyQuote'],
+  '’': ['rsquo', 'rsquor', 'CloseCurlyQuote'],
+  '‚': ['lsquor', 'sbquo'],
+  '“': ['ldquo', 'OpenCurlyDoubleQuote'],
+  '”': ['rdquo', 'rdquor', 'CloseCurlyDoubleQuote'],
+  '„': ['ldquor', 'bdquo'],
+  '†': ['dagger'],
+  '‡': ['Dagger', 'ddagger'],
+  '•': ['bull', 'bullet'],
+  '‥': ['nldr'],
+  '…': ['hellip', 'mldr'],
+  '‰': ['permil'],
+  '‱': ['pertenk'],
+  '′': ['prime'],
+  '″': ['Prime'],
+  '‴': ['tprime'],
+  '‵': ['bprime', 'backprime'],
+  '‹': ['lsaquo'],
+  '›': ['rsaquo'],
+  '‾': ['oline'],
+  '⁁': ['caret'],
+  '⁃': ['hybull'],
+  '⁄': ['frasl'],
+  '⁏': ['bsemi'],
+  '⁗': ['qprime'],
+  ' ': ['MediumSpace'],
+  '⁠': ['NoBreak'],
+  '⁡': ['ApplyFunction', 'af'],
+  '⁢': ['InvisibleTimes', 'it'],
+  '⁣': ['InvisibleComma', 'ic'],
+  '€': ['euro'],
+  '⃛': ['tdot', 'TripleDot'],
+  '⃜': ['DotDot'],
+  'ℂ': ['Copf', 'complexes'],
+  '℅': ['incare'],
+  'ℊ': ['gscr'],
+  'ℋ': ['hamilt', 'HilbertSpace', 'Hscr'],
+  'ℌ': ['Hfr', 'Poincareplane'],
+  'ℍ': ['quaternions', 'Hopf'],
+  'ℎ': ['planckh'],
+  'ℏ': ['planck', 'hbar', 'plankv', 'hslash'],
+  'ℐ': ['Iscr', 'imagline'],
+  'ℑ': ['image', 'Im', 'imagpart', 'Ifr'],
+  'ℒ': ['Lscr', 'lagran', 'Laplacetrf'],
+  'ℓ': ['ell'],
+  'ℕ': ['Nopf', 'naturals'],
+  '№': ['numero'],
+  '℗': ['copysr'],
+  '℘': ['weierp', 'wp'],
+  'ℙ': ['Popf', 'primes'],
+  'ℚ': ['rationals', 'Qopf'],
+  'ℛ': ['Rscr', 'realine'],
+  'ℜ': ['real', 'Re', 'realpart', 'Rfr'],
+  'ℝ': ['reals', 'Ropf'],
+  '℞': ['rx'],
+  '™': ['trade', 'TRADE'],
+  'ℤ': ['integers', 'Zopf'],
+  'Ω': ['ohm'],
+  '℧': ['mho'],
+  'ℨ': ['Zfr', 'zeetrf'],
+  '℩': ['iiota'],
+  'Å': ['angst'],
+  'ℬ': ['bernou', 'Bernoullis', 'Bscr'],
+  'ℭ': ['Cfr', 'Cayleys'],
+  'ℯ': ['escr'],
+  'ℰ': ['Escr', 'expectation'],
+  'ℱ': ['Fscr', 'Fouriertrf'],
+  'ℳ': ['phmmat', 'Mellintrf', 'Mscr'],
+  'ℴ': ['order', 'orderof', 'oscr'],
+  'ℵ': ['alefsym', 'aleph'],
+  'ℶ': ['beth'],
+  'ℷ': ['gimel'],
+  'ℸ': ['daleth'],
+  'ⅅ': ['CapitalDifferentialD', 'DD'],
+  'ⅆ': ['DifferentialD', 'dd'],
+  'ⅇ': ['ExponentialE', 'exponentiale', 'ee'],
+  'ⅈ': ['ImaginaryI', 'ii'],
+  '⅓': ['frac13'],
+  '⅔': ['frac23'],
+  '⅕': ['frac15'],
+  '⅖': ['frac25'],
+  '⅗': ['frac35'],
+  '⅘': ['frac45'],
+  '⅙': ['frac16'],
+  '⅚': ['frac56'],
+  '⅛': ['frac18'],
+  '⅜': ['frac38'],
+  '⅝': ['frac58'],
+  '⅞': ['frac78'],
+  '←': ['larr', 'leftarrow', 'LeftArrow', 'slarr', 'ShortLeftArrow'],
+  '↑': ['uarr', 'uparrow', 'UpArrow', 'ShortUpArrow'],
+  '→': ['rarr', 'rightarrow', 'RightArrow', 'srarr', 'ShortRightArrow'],
+  '↓': ['darr', 'downarrow', 'DownArrow', 'ShortDownArrow'],
+  '↔': ['harr', 'leftrightarrow', 'LeftRightArrow'],
+  '↕': ['varr', 'updownarrow', 'UpDownArrow'],
+  '↖': ['nwarr', 'UpperLeftArrow', 'nwarrow'],
+  '↗': ['nearr', 'UpperRightArrow', 'nearrow'],
+  '↘': ['searr', 'searrow', 'LowerRightArrow'],
+  '↙': ['swarr', 'swarrow', 'LowerLeftArrow'],
+  '↚': ['nlarr', 'nleftarrow'],
+  '↛': ['nrarr', 'nrightarrow'],
+  '↝': ['rarrw', 'rightsquigarrow'],
+  '↞': ['Larr', 'twoheadleftarrow'],
+  '↟': ['Uarr'],
+  '↠': ['Rarr', 'twoheadrightarrow'],
+  '↡': ['Darr'],
+  '↢': ['larrtl', 'leftarrowtail'],
+  '↣': ['rarrtl', 'rightarrowtail'],
+  '↤': ['LeftTeeArrow', 'mapstoleft'],
+  '↥': ['UpTeeArrow', 'mapstoup'],
+  '↦': ['map', 'RightTeeArrow', 'mapsto'],
+  '↧': ['DownTeeArrow', 'mapstodown'],
+  '↩': ['larrhk', 'hookleftarrow'],
+  '↪': ['rarrhk', 'hookrightarrow'],
+  '↫': ['larrlp', 'looparrowleft'],
+  '↬': ['rarrlp', 'looparrowright'],
+  '↭': ['harrw', 'leftrightsquigarrow'],
+  '↮': ['nharr', 'nleftrightarrow'],
+  '↰': ['lsh', 'Lsh'],
+  '↱': ['rsh', 'Rsh'],
+  '↲': ['ldsh'],
+  '↳': ['rdsh'],
+  '↵': ['crarr'],
+  '↶': ['cularr', 'curvearrowleft'],
+  '↷': ['curarr', 'curvearrowright'],
+  '↺': ['olarr', 'circlearrowleft'],
+  '↻': ['orarr', 'circlearrowright'],
+  '↼': ['lharu', 'LeftVector', 'leftharpoonup'],
+  '↽': ['lhard', 'leftharpoondown', 'DownLeftVector'],
+  '↾': ['uharr', 'upharpoonright', 'RightUpVector'],
+  '↿': ['uharl', 'upharpoonleft', 'LeftUpVector'],
+  '⇀': ['rharu', 'RightVector', 'rightharpoonup'],
+  '⇁': ['rhard', 'rightharpoondown', 'DownRightVector'],
+  '⇂': ['dharr', 'RightDownVector', 'downharpoonright'],
+  '⇃': ['dharl', 'LeftDownVector', 'downharpoonleft'],
+  '⇄': ['rlarr', 'rightleftarrows', 'RightArrowLeftArrow'],
+  '⇅': ['udarr', 'UpArrowDownArrow'],
+  '⇆': ['lrarr', 'leftrightarrows', 'LeftArrowRightArrow'],
+  '⇇': ['llarr', 'leftleftarrows'],
+  '⇈': ['uuarr', 'upuparrows'],
+  '⇉': ['rrarr', 'rightrightarrows'],
+  '⇊': ['ddarr', 'downdownarrows'],
+  '⇋': ['lrhar', 'ReverseEquilibrium', 'leftrightharpoons'],
+  '⇌': ['rlhar', 'rightleftharpoons', 'Equilibrium'],
+  '⇍': ['nlArr', 'nLeftarrow'],
+  '⇎': ['nhArr', 'nLeftrightarrow'],
+  '⇏': ['nrArr', 'nRightarrow'],
+  '⇐': ['lArr', 'Leftarrow', 'DoubleLeftArrow'],
+  '⇑': ['uArr', 'Uparrow', 'DoubleUpArrow'],
+  '⇒': ['rArr', 'Rightarrow', 'Implies', 'DoubleRightArrow'],
+  '⇓': ['dArr', 'Downarrow', 'DoubleDownArrow'],
+  '⇔': ['hArr', 'Leftrightarrow', 'DoubleLeftRightArrow', 'iff'],
+  '⇕': ['vArr', 'Updownarrow', 'DoubleUpDownArrow'],
+  '⇖': ['nwArr'],
+  '⇗': ['neArr'],
+  '⇘': ['seArr'],
+  '⇙': ['swArr'],
+  '⇚': ['lAarr', 'Lleftarrow'],
+  '⇛': ['rAarr', 'Rrightarrow'],
+  '⇝': ['zigrarr'],
+  '⇤': ['larrb', 'LeftArrowBar'],
+  '⇥': ['rarrb', 'RightArrowBar'],
+  '⇵': ['duarr', 'DownArrowUpArrow'],
+  '⇽': ['loarr'],
+  '⇾': ['roarr'],
+  '⇿': ['hoarr'],
+  '∀': ['forall', 'ForAll'],
+  '∁': ['comp', 'complement'],
+  '∂': ['part', 'PartialD'],
+  '∃': ['exist', 'Exists'],
+  '∄': ['nexist', 'NotExists', 'nexists'],
+  '∅': ['empty', 'emptyset', 'emptyv', 'varnothing'],
+  '∇': ['nabla', 'Del'],
+  '∈': ['isin', 'isinv', 'Element', 'in'],
+  '∉': ['notin', 'NotElement', 'notinva'],
+  '∋': ['niv', 'ReverseElement', 'ni', 'SuchThat'],
+  '∌': ['notni', 'notniva', 'NotReverseElement'],
+  '∏': ['prod', 'Product'],
+  '∐': ['coprod', 'Coproduct'],
+  '∑': ['sum', 'Sum'],
+  '−': ['minus'],
+  '∓': ['mnplus', 'mp', 'MinusPlus'],
+  '∔': ['plusdo', 'dotplus'],
+  '∖': ['setmn', 'setminus', 'Backslash', 'ssetmn', 'smallsetminus'],
+  '∗': ['lowast'],
+  '∘': ['compfn', 'SmallCircle'],
+  '√': ['radic', 'Sqrt'],
+  '∝': ['prop', 'propto', 'Proportional', 'vprop', 'varpropto'],
+  '∞': ['infin'],
+  '∟': ['angrt'],
+  '∠': ['ang', 'angle'],
+  '∡': ['angmsd', 'measuredangle'],
+  '∢': ['angsph'],
+  '∣': ['mid', 'VerticalBar', 'smid', 'shortmid'],
+  '∤': ['nmid', 'NotVerticalBar', 'nsmid', 'nshortmid'],
+  '∥': ['par', 'parallel', 'DoubleVerticalBar', 'spar', 'shortparallel'],
+  '∦': ['npar', 'nparallel', 'NotDoubleVerticalBar', 'nspar', 'nshortparallel'],
+  '∧': ['and', 'wedge'],
+  '∨': ['or', 'vee'],
+  '∩': ['cap'],
+  '∪': ['cup'],
+  '∫': ['int', 'Integral'],
+  '∬': ['Int'],
+  '∭': ['tint', 'iiint'],
+  '∮': ['conint', 'oint', 'ContourIntegral'],
+  '∯': ['Conint', 'DoubleContourIntegral'],
+  '∰': ['Cconint'],
+  '∱': ['cwint'],
+  '∲': ['cwconint', 'ClockwiseContourIntegral'],
+  '∳': ['awconint', 'CounterClockwiseContourIntegral'],
+  '∴': ['there4', 'therefore', 'Therefore'],
+  '∵': ['becaus', 'because', 'Because'],
+  '∶': ['ratio'],
+  '∷': ['Colon', 'Proportion'],
+  '∸': ['minusd', 'dotminus'],
+  '∺': ['mDDot'],
+  '∻': ['homtht'],
+  '∼': ['sim', 'Tilde', 'thksim', 'thicksim'],
+  '∽': ['bsim', 'backsim'],
+  '∾': ['ac', 'mstpos'],
+  '∿': ['acd'],
+  '≀': ['wreath', 'VerticalTilde', 'wr'],
+  '≁': ['nsim', 'NotTilde'],
+  '≂': ['esim', 'EqualTilde', 'eqsim'],
+  '≃': ['sime', 'TildeEqual', 'simeq'],
+  '≄': ['nsime', 'nsimeq', 'NotTildeEqual'],
+  '≅': ['cong', 'TildeFullEqual'],
+  '≆': ['simne'],
+  '≇': ['ncong', 'NotTildeFullEqual'],
+  '≈': ['asymp', 'ap', 'TildeTilde', 'approx', 'thkap', 'thickapprox'],
+  '≉': ['nap', 'NotTildeTilde', 'napprox'],
+  '≊': ['ape', 'approxeq'],
+  '≋': ['apid'],
+  '≌': ['bcong', 'backcong'],
+  '≍': ['asympeq', 'CupCap'],
+  '≎': ['bump', 'HumpDownHump', 'Bumpeq'],
+  '≏': ['bumpe', 'HumpEqual', 'bumpeq'],
+  '≐': ['esdot', 'DotEqual', 'doteq'],
+  '≑': ['eDot', 'doteqdot'],
+  '≒': ['efDot', 'fallingdotseq'],
+  '≓': ['erDot', 'risingdotseq'],
+  '≔': ['colone', 'coloneq', 'Assign'],
+  '≕': ['ecolon', 'eqcolon'],
+  '≖': ['ecir', 'eqcirc'],
+  '≗': ['cire', 'circeq'],
+  '≙': ['wedgeq'],
+  '≚': ['veeeq'],
+  '≜': ['trie', 'triangleq'],
+  '≟': ['equest', 'questeq'],
+  '≠': ['ne', 'NotEqual'],
+  '≡': ['equiv', 'Congruent'],
+  '≢': ['nequiv', 'NotCongruent'],
+  '≤': ['le', 'leq'],
+  '≥': ['ge', 'GreaterEqual', 'geq'],
+  '≦': ['lE', 'LessFullEqual', 'leqq'],
+  '≧': ['gE', 'GreaterFullEqual', 'geqq'],
+  '≨': ['lnE', 'lneqq'],
+  '≩': ['gnE', 'gneqq'],
+  '≪': ['Lt', 'NestedLessLess', 'll'],
+  '≫': ['Gt', 'NestedGreaterGreater', 'gg'],
+  '≬': ['twixt', 'between'],
+  '≭': ['NotCupCap'],
+  '≮': ['nlt', 'NotLess', 'nless'],
+  '≯': ['ngt', 'NotGreater', 'ngtr'],
+  '≰': ['nle', 'NotLessEqual', 'nleq'],
+  '≱': ['nge', 'NotGreaterEqual', 'ngeq'],
+  '≲': ['lsim', 'LessTilde', 'lesssim'],
+  '≳': ['gsim', 'gtrsim', 'GreaterTilde'],
+  '≴': ['nlsim', 'NotLessTilde'],
+  '≵': ['ngsim', 'NotGreaterTilde'],
+  '≶': ['lg', 'lessgtr', 'LessGreater'],
+  '≷': ['gl', 'gtrless', 'GreaterLess'],
+  '≸': ['ntlg', 'NotLessGreater'],
+  '≹': ['ntgl', 'NotGreaterLess'],
+  '≺': ['pr', 'Precedes', 'prec'],
+  '≻': ['sc', 'Succeeds', 'succ'],
+  '≼': ['prcue', 'PrecedesSlantEqual', 'preccurlyeq'],
+  '≽': ['sccue', 'SucceedsSlantEqual', 'succcurlyeq'],
+  '≾': ['prsim', 'precsim', 'PrecedesTilde'],
+  '≿': ['scsim', 'succsim', 'SucceedsTilde'],
+  '⊀': ['npr', 'nprec', 'NotPrecedes'],
+  '⊁': ['nsc', 'nsucc', 'NotSucceeds'],
+  '⊂': ['sub', 'subset'],
+  '⊃': ['sup', 'supset', 'Superset'],
+  '⊄': ['nsub'],
+  '⊅': ['nsup'],
+  '⊆': ['sube', 'SubsetEqual', 'subseteq'],
+  '⊇': ['supe', 'supseteq', 'SupersetEqual'],
+  '⊈': ['nsube', 'nsubseteq', 'NotSubsetEqual'],
+  '⊉': ['nsupe', 'nsupseteq', 'NotSupersetEqual'],
+  '⊊': ['subne', 'subsetneq'],
+  '⊋': ['supne', 'supsetneq'],
+  '⊍': ['cupdot'],
+  '⊎': ['uplus', 'UnionPlus'],
+  '⊏': ['sqsub', 'SquareSubset', 'sqsubset'],
+  '⊐': ['sqsup', 'SquareSuperset', 'sqsupset'],
+  '⊑': ['sqsube', 'SquareSubsetEqual', 'sqsubseteq'],
+  '⊒': ['sqsupe', 'SquareSupersetEqual', 'sqsupseteq'],
+  '⊓': ['sqcap', 'SquareIntersection'],
+  '⊔': ['sqcup', 'SquareUnion'],
+  '⊕': ['oplus', 'CirclePlus'],
+  '⊖': ['ominus', 'CircleMinus'],
+  '⊗': ['otimes', 'CircleTimes'],
+  '⊘': ['osol'],
+  '⊙': ['odot', 'CircleDot'],
+  '⊚': ['ocir', 'circledcirc'],
+  '⊛': ['oast', 'circledast'],
+  '⊝': ['odash', 'circleddash'],
+  '⊞': ['plusb', 'boxplus'],
+  '⊟': ['minusb', 'boxminus'],
+  '⊠': ['timesb', 'boxtimes'],
+  '⊡': ['sdotb', 'dotsquare'],
+  '⊢': ['vdash', 'RightTee'],
+  '⊣': ['dashv', 'LeftTee'],
+  '⊤': ['top', 'DownTee'],
+  '⊥': ['bottom', 'bot', 'perp', 'UpTee'],
+  '⊧': ['models'],
+  '⊨': ['vDash', 'DoubleRightTee'],
+  '⊩': ['Vdash'],
+  '⊪': ['Vvdash'],
+  '⊫': ['VDash'],
+  '⊬': ['nvdash'],
+  '⊭': ['nvDash'],
+  '⊮': ['nVdash'],
+  '⊯': ['nVDash'],
+  '⊰': ['prurel'],
+  '⊲': ['vltri', 'vartriangleleft', 'LeftTriangle'],
+  '⊳': ['vrtri', 'vartriangleright', 'RightTriangle'],
+  '⊴': ['ltrie', 'trianglelefteq', 'LeftTriangleEqual'],
+  '⊵': ['rtrie', 'trianglerighteq', 'RightTriangleEqual'],
+  '⊶': ['origof'],
+  '⊷': ['imof'],
+  '⊸': ['mumap', 'multimap'],
+  '⊹': ['hercon'],
+  '⊺': ['intcal', 'intercal'],
+  '⊻': ['veebar'],
+  '⊽': ['barvee'],
+  '⊾': ['angrtvb'],
+  '⊿': ['lrtri'],
+  '⋀': ['xwedge', 'Wedge', 'bigwedge'],
+  '⋁': ['xvee', 'Vee', 'bigvee'],
+  '⋂': ['xcap', 'Intersection', 'bigcap'],
+  '⋃': ['xcup', 'Union', 'bigcup'],
+  '⋄': ['diam', 'diamond', 'Diamond'],
+  '⋅': ['sdot'],
+  '⋆': ['sstarf', 'Star'],
+  '⋇': ['divonx', 'divideontimes'],
+  '⋈': ['bowtie'],
+  '⋉': ['ltimes'],
+  '⋊': ['rtimes'],
+  '⋋': ['lthree', 'leftthreetimes'],
+  '⋌': ['rthree', 'rightthreetimes'],
+  '⋍': ['bsime', 'backsimeq'],
+  '⋎': ['cuvee', 'curlyvee'],
+  '⋏': ['cuwed', 'curlywedge'],
+  '⋐': ['Sub', 'Subset'],
+  '⋑': ['Sup', 'Supset'],
+  '⋒': ['Cap'],
+  '⋓': ['Cup'],
+  '⋔': ['fork', 'pitchfork'],
+  '⋕': ['epar'],
+  '⋖': ['ltdot', 'lessdot'],
+  '⋗': ['gtdot', 'gtrdot'],
+  '⋘': ['Ll'],
+  '⋙': ['Gg', 'ggg'],
+  '⋚': ['leg', 'LessEqualGreater', 'lesseqgtr'],
+  '⋛': ['gel', 'gtreqless', 'GreaterEqualLess'],
+  '⋞': ['cuepr', 'curlyeqprec'],
+  '⋟': ['cuesc', 'curlyeqsucc'],
+  '⋠': ['nprcue', 'NotPrecedesSlantEqual'],
+  '⋡': ['nsccue', 'NotSucceedsSlantEqual'],
+  '⋢': ['nsqsube', 'NotSquareSubsetEqual'],
+  '⋣': ['nsqsupe', 'NotSquareSupersetEqual'],
+  '⋦': ['lnsim'],
+  '⋧': ['gnsim'],
+  '⋨': ['prnsim', 'precnsim'],
+  '⋩': ['scnsim', 'succnsim'],
+  '⋪': ['nltri', 'ntriangleleft', 'NotLeftTriangle'],
+  '⋫': ['nrtri', 'ntriangleright', 'NotRightTriangle'],
+  '⋬': ['nltrie', 'ntrianglelefteq', 'NotLeftTriangleEqual'],
+  '⋭': ['nrtrie', 'ntrianglerighteq', 'NotRightTriangleEqual'],
+  '⋮': ['vellip'],
+  '⋯': ['ctdot'],
+  '⋰': ['utdot'],
+  '⋱': ['dtdot'],
+  '⋲': ['disin'],
+  '⋳': ['isinsv'],
+  '⋴': ['isins'],
+  '⋵': ['isindot'],
+  '⋶': ['notinvc'],
+  '⋷': ['notinvb'],
+  '⋹': ['isinE'],
+  '⋺': ['nisd'],
+  '⋻': ['xnis'],
+  '⋼': ['nis'],
+  '⋽': ['notnivc'],
+  '⋾': ['notnivb'],
+  '⌅': ['barwed', 'barwedge'],
+  '⌆': ['Barwed', 'doublebarwedge'],
+  '⌈': ['lceil', 'LeftCeiling'],
+  '⌉': ['rceil', 'RightCeiling'],
+  '⌊': ['lfloor', 'LeftFloor'],
+  '⌋': ['rfloor', 'RightFloor'],
+  '⌌': ['drcrop'],
+  '⌍': ['dlcrop'],
+  '⌎': ['urcrop'],
+  '⌏': ['ulcrop'],
+  '⌐': ['bnot'],
+  '⌒': ['profline'],
+  '⌓': ['profsurf'],
+  '⌕': ['telrec'],
+  '⌖': ['target'],
+  '⌜': ['ulcorn', 'ulcorner'],
+  '⌝': ['urcorn', 'urcorner'],
+  '⌞': ['dlcorn', 'llcorner'],
+  '⌟': ['drcorn', 'lrcorner'],
+  '⌢': ['frown', 'sfrown'],
+  '⌣': ['smile', 'ssmile'],
+  '⌭': ['cylcty'],
+  '⌮': ['profalar'],
+  '⌶': ['topbot'],
+  '⌽': ['ovbar'],
+  '⌿': ['solbar'],
+  '⍼': ['angzarr'],
+  '⎰': ['lmoust', 'lmoustache'],
+  '⎱': ['rmoust', 'rmoustache'],
+  '⎴': ['tbrk', 'OverBracket'],
+  '⎵': ['bbrk', 'UnderBracket'],
+  '⎶': ['bbrktbrk'],
+  '⏜': ['OverParenthesis'],
+  '⏝': ['UnderParenthesis'],
+  '⏞': ['OverBrace'],
+  '⏟': ['UnderBrace'],
+  '⏢': ['trpezium'],
+  '⏧': ['elinters'],
+  '␣': ['blank'],
+  'Ⓢ': ['oS', 'circledS'],
+  '─': ['boxh', 'HorizontalLine'],
+  '│': ['boxv'],
+  '┌': ['boxdr'],
+  '┐': ['boxdl'],
+  '└': ['boxur'],
+  '┘': ['boxul'],
+  '├': ['boxvr'],
+  '┤': ['boxvl'],
+  '┬': ['boxhd'],
+  '┴': ['boxhu'],
+  '┼': ['boxvh'],
+  '═': ['boxH'],
+  '║': ['boxV'],
+  '╒': ['boxdR'],
+  '╓': ['boxDr'],
+  '╔': ['boxDR'],
+  '╕': ['boxdL'],
+  '╖': ['boxDl'],
+  '╗': ['boxDL'],
+  '╘': ['boxuR'],
+  '╙': ['boxUr'],
+  '╚': ['boxUR'],
+  '╛': ['boxuL'],
+  '╜': ['boxUl'],
+  '╝': ['boxUL'],
+  '╞': ['boxvR'],
+  '╟': ['boxVr'],
+  '╠': ['boxVR'],
+  '╡': ['boxvL'],
+  '╢': ['boxVl'],
+  '╣': ['boxVL'],
+  '╤': ['boxHd'],
+  '╥': ['boxhD'],
+  '╦': ['boxHD'],
+  '╧': ['boxHu'],
+  '╨': ['boxhU'],
+  '╩': ['boxHU'],
+  '╪': ['boxvH'],
+  '╫': ['boxVh'],
+  '╬': ['boxVH'],
+  '▀': ['uhblk'],
+  '▄': ['lhblk'],
+  '█': ['block'],
+  '░': ['blk14'],
+  '▒': ['blk12'],
+  '▓': ['blk34'],
+  '□': ['squ', 'square', 'Square'],
+  '▪': ['squf', 'squarf', 'blacksquare', 'FilledVerySmallSquare'],
+  '▫': ['EmptyVerySmallSquare'],
+  '▭': ['rect'],
+  '▮': ['marker'],
+  '▱': ['fltns'],
+  '△': ['xutri', 'bigtriangleup'],
+  '▴': ['utrif', 'blacktriangle'],
+  '▵': ['utri', 'triangle'],
+  '▸': ['rtrif', 'blacktriangleright'],
+  '▹': ['rtri', 'triangleright'],
+  '▽': ['xdtri', 'bigtriangledown'],
+  '▾': ['dtrif', 'blacktriangledown'],
+  '▿': ['dtri', 'triangledown'],
+  '◂': ['ltrif', 'blacktriangleleft'],
+  '◃': ['ltri', 'triangleleft'],
+  '◊': ['loz', 'lozenge'],
+  '○': ['cir'],
+  '◬': ['tridot'],
+  '◯': ['xcirc', 'bigcirc'],
+  '◸': ['ultri'],
+  '◹': ['urtri'],
+  '◺': ['lltri'],
+  '◻': ['EmptySmallSquare'],
+  '◼': ['FilledSmallSquare'],
+  '★': ['starf', 'bigstar'],
+  '☆': ['star'],
+  '☎': ['phone'],
+  '♀': ['female'],
+  '♂': ['male'],
+  '♠': ['spades', 'spadesuit'],
+  '♣': ['clubs', 'clubsuit'],
+  '♥': ['hearts', 'heartsuit'],
+  '♦': ['diams', 'diamondsuit'],
+  '♪': ['sung'],
+  '♭': ['flat'],
+  '♮': ['natur', 'natural'],
+  '♯': ['sharp'],
+  '✓': ['check', 'checkmark'],
+  '✗': ['cross'],
+  '✠': ['malt', 'maltese'],
+  '✶': ['sext'],
+  '❘': ['VerticalSeparator'],
+  '❲': ['lbbrk'],
+  '❳': ['rbbrk'],
+  '⟦': ['lobrk', 'LeftDoubleBracket'],
+  '⟧': ['robrk', 'RightDoubleBracket'],
+  '⟨': ['lang', 'LeftAngleBracket', 'langle'],
+  '⟩': ['rang', 'RightAngleBracket', 'rangle'],
+  '⟪': ['Lang'],
+  '⟫': ['Rang'],
+  '⟬': ['loang'],
+  '⟭': ['roang'],
+  '⟵': ['xlarr', 'longleftarrow', 'LongLeftArrow'],
+  '⟶': ['xrarr', 'longrightarrow', 'LongRightArrow'],
+  '⟷': ['xharr', 'longleftrightarrow', 'LongLeftRightArrow'],
+  '⟸': ['xlArr', 'Longleftarrow', 'DoubleLongLeftArrow'],
+  '⟹': ['xrArr', 'Longrightarrow', 'DoubleLongRightArrow'],
+  '⟺': ['xhArr', 'Longleftrightarrow', 'DoubleLongLeftRightArrow'],
+  '⟼': ['xmap', 'longmapsto'],
+  '⟿': ['dzigrarr'],
+  '⤂': ['nvlArr'],
+  '⤃': ['nvrArr'],
+  '⤄': ['nvHarr'],
+  '⤅': ['Map'],
+  '⤌': ['lbarr'],
+  '⤍': ['rbarr', 'bkarow'],
+  '⤎': ['lBarr'],
+  '⤏': ['rBarr', 'dbkarow'],
+  '⤐': ['RBarr', 'drbkarow'],
+  '⤑': ['DDotrahd'],
+  '⤒': ['UpArrowBar'],
+  '⤓': ['DownArrowBar'],
+  '⤖': ['Rarrtl'],
+  '⤙': ['latail'],
+  '⤚': ['ratail'],
+  '⤛': ['lAtail'],
+  '⤜': ['rAtail'],
+  '⤝': ['larrfs'],
+  '⤞': ['rarrfs'],
+  '⤟': ['larrbfs'],
+  '⤠': ['rarrbfs'],
+  '⤣': ['nwarhk'],
+  '⤤': ['nearhk'],
+  '⤥': ['searhk', 'hksearow'],
+  '⤦': ['swarhk', 'hkswarow'],
+  '⤧': ['nwnear'],
+  '⤨': ['nesear', 'toea'],
+  '⤩': ['seswar', 'tosa'],
+  '⤪': ['swnwar'],
+  '⤳': ['rarrc'],
+  '⤵': ['cudarrr'],
+  '⤶': ['ldca'],
+  '⤷': ['rdca'],
+  '⤸': ['cudarrl'],
+  '⤹': ['larrpl'],
+  '⤼': ['curarrm'],
+  '⤽': ['cularrp'],
+  '⥅': ['rarrpl'],
+  '⥈': ['harrcir'],
+  '⥉': ['Uarrocir'],
+  '⥊': ['lurdshar'],
+  '⥋': ['ldrushar'],
+  '⥎': ['LeftRightVector'],
+  '⥏': ['RightUpDownVector'],
+  '⥐': ['DownLeftRightVector'],
+  '⥑': ['LeftUpDownVector'],
+  '⥒': ['LeftVectorBar'],
+  '⥓': ['RightVectorBar'],
+  '⥔': ['RightUpVectorBar'],
+  '⥕': ['RightDownVectorBar'],
+  '⥖': ['DownLeftVectorBar'],
+  '⥗': ['DownRightVectorBar'],
+  '⥘': ['LeftUpVectorBar'],
+  '⥙': ['LeftDownVectorBar'],
+  '⥚': ['LeftTeeVector'],
+  '⥛': ['RightTeeVector'],
+  '⥜': ['RightUpTeeVector'],
+  '⥝': ['RightDownTeeVector'],
+  '⥞': ['DownLeftTeeVector'],
+  '⥟': ['DownRightTeeVector'],
+  '⥠': ['LeftUpTeeVector'],
+  '⥡': ['LeftDownTeeVector'],
+  '⥢': ['lHar'],
+  '⥣': ['uHar'],
+  '⥤': ['rHar'],
+  '⥥': ['dHar'],
+  '⥦': ['luruhar'],
+  '⥧': ['ldrdhar'],
+  '⥨': ['ruluhar'],
+  '⥩': ['rdldhar'],
+  '⥪': ['lharul'],
+  '⥫': ['llhard'],
+  '⥬': ['rharul'],
+  '⥭': ['lrhard'],
+  '⥮': ['udhar', 'UpEquilibrium'],
+  '⥯': ['duhar', 'ReverseUpEquilibrium'],
+  '⥰': ['RoundImplies'],
+  '⥱': ['erarr'],
+  '⥲': ['simrarr'],
+  '⥳': ['larrsim'],
+  '⥴': ['rarrsim'],
+  '⥵': ['rarrap'],
+  '⥶': ['ltlarr'],
+  '⥸': ['gtrarr'],
+  '⥹': ['subrarr'],
+  '⥻': ['suplarr'],
+  '⥼': ['lfisht'],
+  '⥽': ['rfisht'],
+  '⥾': ['ufisht'],
+  '⥿': ['dfisht'],
+  '⦅': ['lopar'],
+  '⦆': ['ropar'],
+  '⦋': ['lbrke'],
+  '⦌': ['rbrke'],
+  '⦍': ['lbrkslu'],
+  '⦎': ['rbrksld'],
+  '⦏': ['lbrksld'],
+  '⦐': ['rbrkslu'],
+  '⦑': ['langd'],
+  '⦒': ['rangd'],
+  '⦓': ['lparlt'],
+  '⦔': ['rpargt'],
+  '⦕': ['gtlPar'],
+  '⦖': ['ltrPar'],
+  '⦚': ['vzigzag'],
+  '⦜': ['vangrt'],
+  '⦝': ['angrtvbd'],
+  '⦤': ['ange'],
+  '⦥': ['range'],
+  '⦦': ['dwangle'],
+  '⦧': ['uwangle'],
+  '⦨': ['angmsdaa'],
+  '⦩': ['angmsdab'],
+  '⦪': ['angmsdac'],
+  '⦫': ['angmsdad'],
+  '⦬': ['angmsdae'],
+  '⦭': ['angmsdaf'],
+  '⦮': ['angmsdag'],
+  '⦯': ['angmsdah'],
+  '⦰': ['bemptyv'],
+  '⦱': ['demptyv'],
+  '⦲': ['cemptyv'],
+  '⦳': ['raemptyv'],
+  '⦴': ['laemptyv'],
+  '⦵': ['ohbar'],
+  '⦶': ['omid'],
+  '⦷': ['opar'],
+  '⦹': ['operp'],
+  '⦻': ['olcross'],
+  '⦼': ['odsold'],
+  '⦾': ['olcir'],
+  '⦿': ['ofcir'],
+  '⧀': ['olt'],
+  '⧁': ['ogt'],
+  '⧂': ['cirscir'],
+  '⧃': ['cirE'],
+  '⧄': ['solb'],
+  '⧅': ['bsolb'],
+  '⧉': ['boxbox'],
+  '⧍': ['trisb'],
+  '⧎': ['rtriltri'],
+  '⧏': ['LeftTriangleBar'],
+  '⧐': ['RightTriangleBar'],
+  '⧚': ['race'],
+  '⧜': ['iinfin'],
+  '⧝': ['infintie'],
+  '⧞': ['nvinfin'],
+  '⧣': ['eparsl'],
+  '⧤': ['smeparsl'],
+  '⧥': ['eqvparsl'],
+  '⧫': ['lozf', 'blacklozenge'],
+  '⧴': ['RuleDelayed'],
+  '⧶': ['dsol'],
+  '⨀': ['xodot', 'bigodot'],
+  '⨁': ['xoplus', 'bigoplus'],
+  '⨂': ['xotime', 'bigotimes'],
+  '⨄': ['xuplus', 'biguplus'],
+  '⨆': ['xsqcup', 'bigsqcup'],
+  '⨌': ['qint', 'iiiint'],
+  '⨍': ['fpartint'],
+  '⨐': ['cirfnint'],
+  '⨑': ['awint'],
+  '⨒': ['rppolint'],
+  '⨓': ['scpolint'],
+  '⨔': ['npolint'],
+  '⨕': ['pointint'],
+  '⨖': ['quatint'],
+  '⨗': ['intlarhk'],
+  '⨢': ['pluscir'],
+  '⨣': ['plusacir'],
+  '⨤': ['simplus'],
+  '⨥': ['plusdu'],
+  '⨦': ['plussim'],
+  '⨧': ['plustwo'],
+  '⨩': ['mcomma'],
+  '⨪': ['minusdu'],
+  '⨭': ['loplus'],
+  '⨮': ['roplus'],
+  '⨯': ['Cross'],
+  '⨰': ['timesd'],
+  '⨱': ['timesbar'],
+  '⨳': ['smashp'],
+  '⨴': ['lotimes'],
+  '⨵': ['rotimes'],
+  '⨶': ['otimesas'],
+  '⨷': ['Otimes'],
+  '⨸': ['odiv'],
+  '⨹': ['triplus'],
+  '⨺': ['triminus'],
+  '⨻': ['tritime'],
+  '⨼': ['iprod', 'intprod'],
+  '⨿': ['amalg'],
+  '⩀': ['capdot'],
+  '⩂': ['ncup'],
+  '⩃': ['ncap'],
+  '⩄': ['capand'],
+  '⩅': ['cupor'],
+  '⩆': ['cupcap'],
+  '⩇': ['capcup'],
+  '⩈': ['cupbrcap'],
+  '⩉': ['capbrcup'],
+  '⩊': ['cupcup'],
+  '⩋': ['capcap'],
+  '⩌': ['ccups'],
+  '⩍': ['ccaps'],
+  '⩐': ['ccupssm'],
+  '⩓': ['And'],
+  '⩔': ['Or'],
+  '⩕': ['andand'],
+  '⩖': ['oror'],
+  '⩗': ['orslope'],
+  '⩘': ['andslope'],
+  '⩚': ['andv'],
+  '⩛': ['orv'],
+  '⩜': ['andd'],
+  '⩝': ['ord'],
+  '⩟': ['wedbar'],
+  '⩦': ['sdote'],
+  '⩪': ['simdot'],
+  '⩭': ['congdot'],
+  '⩮': ['easter'],
+  '⩯': ['apacir'],
+  '⩰': ['apE'],
+  '⩱': ['eplus'],
+  '⩲': ['pluse'],
+  '⩳': ['Esim'],
+  '⩴': ['Colone'],
+  '⩵': ['Equal'],
+  '⩷': ['eDDot', 'ddotseq'],
+  '⩸': ['equivDD'],
+  '⩹': ['ltcir'],
+  '⩺': ['gtcir'],
+  '⩻': ['ltquest'],
+  '⩼': ['gtquest'],
+  '⩽': ['les', 'LessSlantEqual', 'leqslant'],
+  '⩾': ['ges', 'GreaterSlantEqual', 'geqslant'],
+  '⩿': ['lesdot'],
+  '⪀': ['gesdot'],
+  '⪁': ['lesdoto'],
+  '⪂': ['gesdoto'],
+  '⪃': ['lesdotor'],
+  '⪄': ['gesdotol'],
+  '⪅': ['lap', 'lessapprox'],
+  '⪆': ['gap', 'gtrapprox'],
+  '⪇': ['lne', 'lneq'],
+  '⪈': ['gne', 'gneq'],
+  '⪉': ['lnap', 'lnapprox'],
+  '⪊': ['gnap', 'gnapprox'],
+  '⪋': ['lEg', 'lesseqqgtr'],
+  '⪌': ['gEl', 'gtreqqless'],
+  '⪍': ['lsime'],
+  '⪎': ['gsime'],
+  '⪏': ['lsimg'],
+  '⪐': ['gsiml'],
+  '⪑': ['lgE'],
+  '⪒': ['glE'],
+  '⪓': ['lesges'],
+  '⪔': ['gesles'],
+  '⪕': ['els', 'eqslantless'],
+  '⪖': ['egs', 'eqslantgtr'],
+  '⪗': ['elsdot'],
+  '⪘': ['egsdot'],
+  '⪙': ['el'],
+  '⪚': ['eg'],
+  '⪝': ['siml'],
+  '⪞': ['simg'],
+  '⪟': ['simlE'],
+  '⪠': ['simgE'],
+  '⪡': ['LessLess'],
+  '⪢': ['GreaterGreater'],
+  '⪤': ['glj'],
+  '⪥': ['gla'],
+  '⪦': ['ltcc'],
+  '⪧': ['gtcc'],
+  '⪨': ['lescc'],
+  '⪩': ['gescc'],
+  '⪪': ['smt'],
+  '⪫': ['lat'],
+  '⪬': ['smte'],
+  '⪭': ['late'],
+  '⪮': ['bumpE'],
+  '⪯': ['pre', 'preceq', 'PrecedesEqual'],
+  '⪰': ['sce', 'succeq', 'SucceedsEqual'],
+  '⪳': ['prE'],
+  '⪴': ['scE'],
+  '⪵': ['prnE', 'precneqq'],
+  '⪶': ['scnE', 'succneqq'],
+  '⪷': ['prap', 'precapprox'],
+  '⪸': ['scap', 'succapprox'],
+  '⪹': ['prnap', 'precnapprox'],
+  '⪺': ['scnap', 'succnapprox'],
+  '⪻': ['Pr'],
+  '⪼': ['Sc'],
+  '⪽': ['subdot'],
+  '⪾': ['supdot'],
+  '⪿': ['subplus'],
+  '⫀': ['supplus'],
+  '⫁': ['submult'],
+  '⫂': ['supmult'],
+  '⫃': ['subedot'],
+  '⫄': ['supedot'],
+  '⫅': ['subE', 'subseteqq'],
+  '⫆': ['supE', 'supseteqq'],
+  '⫇': ['subsim'],
+  '⫈': ['supsim'],
+  '⫋': ['subnE', 'subsetneqq'],
+  '⫌': ['supnE', 'supsetneqq'],
+  '⫏': ['csub'],
+  '⫐': ['csup'],
+  '⫑': ['csube'],
+  '⫒': ['csupe'],
+  '⫓': ['subsup'],
+  '⫔': ['supsub'],
+  '⫕': ['subsub'],
+  '⫖': ['supsup'],
+  '⫗': ['suphsub'],
+  '⫘': ['supdsub'],
+  '⫙': ['forkv'],
+  '⫚': ['topfork'],
+  '⫛': ['mlcp'],
+  '⫤': ['Dashv', 'DoubleLeftTee'],
+  '⫦': ['Vdashl'],
+  '⫧': ['Barv'],
+  '⫨': ['vBar'],
+  '⫩': ['vBarv'],
+  '⫫': ['Vbar'],
+  '⫬': ['Not'],
+  '⫭': ['bNot'],
+  '⫮': ['rnmid'],
+  '⫯': ['cirmid'],
+  '⫰': ['midcir'],
+  '⫱': ['topcir'],
+  '⫲': ['nhpar'],
+  '⫳': ['parsim'],
+  '⫽': ['parsl'],
+  'ﬀ': ['fflig'],
+  'ﬁ': ['filig'],
+  'ﬂ': ['fllig'],
+  'ﬃ': ['ffilig'],
+  'ﬄ': ['ffllig'],
+  '𝒜': ['Ascr'],
+  '𝒞': ['Cscr'],
+  '𝒟': ['Dscr'],
+  '𝒢': ['Gscr'],
+  '𝒥': ['Jscr'],
+  '𝒦': ['Kscr'],
+  '𝒩': ['Nscr'],
+  '𝒪': ['Oscr'],
+  '𝒫': ['Pscr'],
+  '𝒬': ['Qscr'],
+  '𝒮': ['Sscr'],
+  '𝒯': ['Tscr'],
+  '𝒰': ['Uscr'],
+  '𝒱': ['Vscr'],
+  '𝒲': ['Wscr'],
+  '𝒳': ['Xscr'],
+  '𝒴': ['Yscr'],
+  '𝒵': ['Zscr'],
+  '𝒶': ['ascr'],
+  '𝒷': ['bscr'],
+  '𝒸': ['cscr'],
+  '𝒹': ['dscr'],
+  '𝒻': ['fscr'],
+  '𝒽': ['hscr'],
+  '𝒾': ['iscr'],
+  '𝒿': ['jscr'],
+  '𝓀': ['kscr'],
+  '𝓁': ['lscr'],
+  '𝓂': ['mscr'],
+  '𝓃': ['nscr'],
+  '𝓅': ['pscr'],
+  '𝓆': ['qscr'],
+  '𝓇': ['rscr'],
+  '𝓈': ['sscr'],
+  '𝓉': ['tscr'],
+  '𝓊': ['uscr'],
+  '𝓋': ['vscr'],
+  '𝓌': ['wscr'],
+  '𝓍': ['xscr'],
+  '𝓎': ['yscr'],
+  '𝓏': ['zscr'],
+  '𝔄': ['Afr'],
+  '𝔅': ['Bfr'],
+  '𝔇': ['Dfr'],
+  '𝔈': ['Efr'],
+  '𝔉': ['Ffr'],
+  '𝔊': ['Gfr'],
+  '𝔍': ['Jfr'],
+  '𝔎': ['Kfr'],
+  '𝔏': ['Lfr'],
+  '𝔐': ['Mfr'],
+  '𝔑': ['Nfr'],
+  '𝔒': ['Ofr'],
+  '𝔓': ['Pfr'],
+  '𝔔': ['Qfr'],
+  '𝔖': ['Sfr'],
+  '𝔗': ['Tfr'],
+  '𝔘': ['Ufr'],
+  '𝔙': ['Vfr'],
+  '𝔚': ['Wfr'],
+  '𝔛': ['Xfr'],
+  '𝔜': ['Yfr'],
+  '𝔞': ['afr'],
+  '𝔟': ['bfr'],
+  '𝔠': ['cfr'],
+  '𝔡': ['dfr'],
+  '𝔢': ['efr'],
+  '𝔣': ['ffr'],
+  '𝔤': ['gfr'],
+  '𝔥': ['hfr'],
+  '𝔦': ['ifr'],
+  '𝔧': ['jfr'],
+  '𝔨': ['kfr'],
+  '𝔩': ['lfr'],
+  '𝔪': ['mfr'],
+  '𝔫': ['nfr'],
+  '𝔬': ['ofr'],
+  '𝔭': ['pfr'],
+  '𝔮': ['qfr'],
+  '𝔯': ['rfr'],
+  '𝔰': ['sfr'],
+  '𝔱': ['tfr'],
+  '𝔲': ['ufr'],
+  '𝔳': ['vfr'],
+  '𝔴': ['wfr'],
+  '𝔵': ['xfr'],
+  '𝔶': ['yfr'],
+  '𝔷': ['zfr'],
+  '𝔸': ['Aopf'],
+  '𝔹': ['Bopf'],
+  '𝔻': ['Dopf'],
+  '𝔼': ['Eopf'],
+  '𝔽': ['Fopf'],
+  '𝔾': ['Gopf'],
+  '𝕀': ['Iopf'],
+  '𝕁': ['Jopf'],
+  '𝕂': ['Kopf'],
+  '𝕃': ['Lopf'],
+  '𝕄': ['Mopf'],
+  '𝕆': ['Oopf'],
+  '𝕊': ['Sopf'],
+  '𝕋': ['Topf'],
+  '𝕌': ['Uopf'],
+  '𝕍': ['Vopf'],
+  '𝕎': ['Wopf'],
+  '𝕏': ['Xopf'],
+  '𝕐': ['Yopf'],
+  '𝕒': ['aopf'],
+  '𝕓': ['bopf'],
+  '𝕔': ['copf'],
+  '𝕕': ['dopf'],
+  '𝕖': ['eopf'],
+  '𝕗': ['fopf'],
+  '𝕘': ['gopf'],
+  '𝕙': ['hopf'],
+  '𝕚': ['iopf'],
+  '𝕛': ['jopf'],
+  '𝕜': ['kopf'],
+  '𝕝': ['lopf'],
+  '𝕞': ['mopf'],
+  '𝕟': ['nopf'],
+  '𝕠': ['oopf'],
+  '𝕡': ['popf'],
+  '𝕢': ['qopf'],
+  '𝕣': ['ropf'],
+  '𝕤': ['sopf'],
+  '𝕥': ['topf'],
+  '𝕦': ['uopf'],
+  '𝕧': ['vopf'],
+  '𝕨': ['wopf'],
+  '𝕩': ['xopf'],
+  '𝕪': ['yopf'],
+  '𝕫': ['zopf']
+};
+exports.Entities = Entities;
+var _default = Entities;
+exports.default = _default;
+},{}],"input.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _entities = _interopRequireDefault(require("./entities"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * Input string conversion utilities
+ */
+class Input {
+  /**
+   * Encode HTML entities in given string
+   *
+   * @param {string} str - Input string
+   * @return {string}
+   */
+  static htmlEncode(str) {
+    return str.replace(/"/g, '&quot;').replace(/'/g, '&apos;').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  /**
+   * Decode HTML entities in given string
+   *
+   * @param {string} str - Input string
+   * @return {string}
+   */
+
+
+  static htmlDecode(str) {
+    Object.keys(_entities.default).forEach(char => {
+      const pattern = new RegExp(`&${_entities.default[char].join(';|&')};`, 'g');
+      str = str.replace(pattern, char);
+    });
+    return str;
+  }
+  /**
+   * Encode characters in given URL string
+   *
+   * @param {string} str - Input string
+   * @return {string}
+   */
+
+
+  static urlEncode(str) {
+    return encodeURIComponent(str);
+  }
+  /**
+   * Decode characters in given URL string
+   *
+   * @param {string} str - Input string
+   * @return {string}
+   */
+
+
+  static urlDecode(str) {
+    return decodeURIComponent(str);
+  }
+  /**
+   * Escape characters in given RegEx string
+   *
+   * @param {string} str - Input string
+   * @return {string}
+   */
+
+
+  static regexEscape(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+}
+
+exports.default = Input;
+},{"./entities":"entities.js"}],"components/Toolbelt.vue":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10525,8 +11699,17 @@ var _clipboard = _interopRequireDefault(require("clipboard"));
 
 var _Dropdown = _interopRequireDefault(require("./Dropdown.vue"));
 
+var _input = _interopRequireDefault(require("../input"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+//
+//
+//
+//
+//
+//
+//
 //
 //
 //
@@ -10618,6 +11801,31 @@ var _default = {
       input: '',
       output: ''
     };
+  },
+
+  watch: {
+    input(value) {
+      if (!value) return;
+
+      try {
+        this.output = _input.default.regexEscape(value);
+      } catch (e) {
+        this.output = e;
+      }
+    }
+
+  },
+
+  mounted() {
+    // Copy to clipboard
+    const clipboard = new _clipboard.default('.copy-btn');
+    clipboard.on('success', function (e) {
+      e.trigger.classList.add('copied');
+      setTimeout(() => {
+        e.trigger.classList.remove('copied');
+      }, 3000);
+      e.clearSelection();
+    });
   }
 
 };
@@ -10663,77 +11871,113 @@ exports.default = _default;
       "div",
       { staticClass: "belt" },
       [
-        _c("dropdown", { attrs: { label: "Mode", value: "HTML" } }, [
-          _c("ul", { staticClass: "menu unlist" }, [
-            _c("li", { staticClass: "selected" }, [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("HTML")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⌃1")])
-              ])
-            ]),
-            _vm._v(" "),
-            _c("li", [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("CSS")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⌃2")])
-              ])
-            ]),
-            _vm._v(" "),
-            _c("li", [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("JS")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⌃3")])
-              ])
-            ]),
-            _vm._v(" "),
-            _c("li", [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("URL")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⌃4")])
-              ])
-            ]),
-            _vm._v(" "),
-            _c("li", [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("Unicode")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⌃5")])
+        _c(
+          "dropdown",
+          { attrs: { label: "Mode", value: "HTML Encode", size: "lg" } },
+          [
+            _c("ul", { staticClass: "menu unlist" }, [
+              _c("li", { staticClass: "selected" }, [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("HTML Encode")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃1")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("HTML Decode")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃2")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("JavaScript Escape")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃3")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("CSS Escape")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃4")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("URI Encode")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃5")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("URI Decode")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃6")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("Base64 Encode")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃7")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("Base64 Decode")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃8")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("RegEx Escape")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃9")])
+                ])
+              ]),
+              _vm._v(" "),
+              _c("li", [
+                _c("button", { staticClass: "menu-item" }, [
+                  _c("span", { staticClass: "menu-label" }, [
+                    _vm._v("JSON Stringify")
+                  ]),
+                  _vm._v(" "),
+                  _c("span", { staticClass: "shortcut" }, [_vm._v("⌃0")])
+                ])
               ])
             ])
-          ])
-        ]),
-        _vm._v(" "),
-        _c("dropdown", { attrs: { label: "Operation", value: "Encode" } }, [
-          _c("ul", { staticClass: "menu unlist" }, [
-            _c("li", { staticClass: "selected" }, [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("Encode")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⇧⌃1")])
-              ])
-            ]),
-            _vm._v(" "),
-            _c("li", [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("Decode")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⇧⌃2")])
-              ])
-            ]),
-            _vm._v(" "),
-            _c("li", [
-              _c("button", { staticClass: "menu-item" }, [
-                _c("span", { staticClass: "menu-label" }, [_vm._v("Escape")]),
-                _vm._v(" "),
-                _c("span", { staticClass: "shortcut" }, [_vm._v("⇧⌃3")])
-              ])
-            ])
-          ])
-        ]),
+          ]
+        ),
         _vm._v(" "),
         _c("span", { staticClass: "separator" }),
         _vm._v(" "),
@@ -10827,17 +12071,13 @@ render._withStripped = true
         
       }
     })();
-},{"clipboard":"../node_modules/clipboard/dist/clipboard.js","./Dropdown.vue":"components/Dropdown.vue","vue-hot-reload-api":"../node_modules/vue-hot-reload-api/dist/index.js","vue":"../node_modules/vue/dist/vue.runtime.esm.js"}],"components/App.vue":[function(require,module,exports) {
+},{"clipboard":"../node_modules/clipboard/dist/clipboard.js","./Dropdown.vue":"components/Dropdown.vue","../input":"input.js","vue-hot-reload-api":"../node_modules/vue-hot-reload-api/dist/index.js","vue":"../node_modules/vue/dist/vue.runtime.esm.js"}],"components/App.vue":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-
-var _clipboard = _interopRequireDefault(require("clipboard"));
-
-var _queryString = _interopRequireDefault(require("query-string"));
 
 var _Toolbelt = _interopRequireDefault(require("./Toolbelt.vue"));
 
@@ -10879,29 +12119,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var _default = {
   components: {
     Toolbelt: _Toolbelt.default
-  },
-
-  data() {
-    return {};
-  },
-
-  async mounted() {
-    // Copy to clipboard
-    const clipboard = new _clipboard.default('.copy-btn');
-    clipboard.on('success', function (e) {
-      e.trigger.classList.add('copied');
-      setTimeout(() => {
-        e.trigger.classList.remove('copied');
-      }, 3000);
-      e.clearSelection();
-    });
-  },
-
-  methods: {
-    scrollTop() {
-      document.body.scrollTop = document.documentElement.scrollTop = 0;
-    }
-
   }
 };
 exports.default = _default;
@@ -11082,7 +12299,7 @@ render._withStripped = true
         
       }
     })();
-},{"clipboard":"../node_modules/clipboard/dist/clipboard.js","query-string":"../node_modules/query-string/index.js","./Toolbelt.vue":"components/Toolbelt.vue","vue-hot-reload-api":"../node_modules/vue-hot-reload-api/dist/index.js","vue":"../node_modules/vue/dist/vue.runtime.esm.js"}],"app.js":[function(require,module,exports) {
+},{"./Toolbelt.vue":"components/Toolbelt.vue","vue-hot-reload-api":"../node_modules/vue-hot-reload-api/dist/index.js","vue":"../node_modules/vue/dist/vue.runtime.esm.js"}],"app.js":[function(require,module,exports) {
 "use strict";
 
 var _App = _interopRequireDefault(require("./components/App.vue"));
@@ -11124,7 +12341,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "62049" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "63804" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

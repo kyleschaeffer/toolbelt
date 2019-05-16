@@ -1,5 +1,5 @@
 {
-  "name": "tbelt",
+  "name": "toolbelt",
   "version": "1.0.0",
   "description": "Toolbelt: String Encoding, Decoding, and Escaping",
   "main": "src/app.js",
@@ -9,7 +9,7 @@
     "clean": "rm -f docs/app.* && rm -rf .cache",
     "scrape": "node --use_strict scrape/scrape.js"
   },
-  "repository": "git@github.com:sprtus/tbelt.git",
+  "repository": "git@github.com:sprtus/toolbelt.git",
   "author": "@kyleschaeffer",
   "license": "MIT",
   "dependencies": {

@@ -46,4 +46,33 @@
       right: 0;
     }
   }
+
+  // Flow arrow
+  &.flow-arrow {
+    height: 50px;
+    position: relative;
+    width: 50px;
+
+    &::before {
+      background: transparentize($darker, .92);
+      bottom: 25px;
+      content: '';
+      display: block;
+      left: 10px;
+      position: absolute;
+      right: 10px;
+      top: 0;
+    }
+
+    &::after {
+      border: 25px solid transparent;
+      border-bottom: 0;
+      border-top-color: transparentize($darker, .92);
+      bottom: 0;
+      content: '';
+      display: block;
+      left: 0;
+      position: absolute;
+    }
+  }
 }

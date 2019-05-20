@@ -27,7 +27,9 @@
         <span class="tooltip tooltip-copied fade-in">Copied</span>
       </button>
 
-      <div class="arrow" aria-hidden="true">⬇</div>
+      <div class="arrow" aria-hidden="true">
+        <i class="icon flow-arrow"></i>
+      </div>
     </div>
     <div class="out">
       <textarea id="out" ref="output" v-model="output" class="input tall no-resize code" placeholder="Output" readonly></textarea>

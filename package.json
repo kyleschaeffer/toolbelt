@@ -1,13 +1,12 @@
 {
   "name": "toolbelt",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Toolbelt: String Encoding, Decoding, and Escaping",
   "main": "src/app.js",
   "scripts": {
     "dev": "yarn run clean && parcel src/index.html --open --out-dir docs",
     "build": "yarn run clean && parcel build src/index.html --out-dir docs",
-    "clean": "rm -f docs/app.* && rm -rf .cache",
-    "scrape": "node --use_strict scrape/scrape.js"
+    "clean": "rm -f docs/app.* && rm -rf .cache"
   },
   "repository": "git@github.com:kyleschaeffer/toolbelt.git",
   "author": "@kyleschaeffer",
@@ -22,7 +21,7 @@
     "babel-core": "^6.26.3",
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.7.0",
-    "eslint": "^5.16.0",
+    "eslint": "6.0.1",
     "eslint-plugin-vue": "^5.2.2",
     "parcel-bundler": "^1.11.0",
     "sass": "^1.17.1",
